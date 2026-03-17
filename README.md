@@ -34,27 +34,13 @@ Built with **Python + Flask + SQLite + plain HTML/JS**. No build tools, no frame
 git clone https://github.com/HZ247/Road_Inspection_Officer_Portal.git
 ```
 
-### 2. Create and activate virtual environment
-
-```bash
-python -m venv .venv
-```
-
-```bash
-# Windows
-.venv\Scripts\activate
-
-# Mac / Linux
-source .venv/bin/activate
-```
-
-### 3. Install dependencies
+### 2. Install dependencies
 
 ```bash
 pip install flask flask-cors pyjwt bcrypt
 ```
 
-### 4. Run
+### 3. Run
 
 ```bash
 python app.py
