@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FVO Portal – Register</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #eef2f7; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .card {
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 6px 30px rgba(0,0,0,0.10);
+      padding: 44px 40px; width: 100%; max-width: 480px;
+    }
+    .header { text-align: center; margin-bottom: 28px; }
+    .header .icon { font-size: 36px; }
+    .header h1 { color: #1a4f8a; font-size: 20px; margin-top: 8px; }
+    .header p  { color: #888; font-size: 13px; margin-top: 4px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 5px; }
+    .req { color: #dc2626; }
+    input, select {
+      width: 100%; padding: 10px 13px;
+      border: 1.5px solid #dde2ea; border-radius: 8px;
+      font-size: 14px; outline: none; transition: border-color 0.2s; background: #fff;
+    }
+    input:focus, select:focus { border-color: #1a4f8a; }
+    .btn {
+      width: 100%; padding: 13px;
+      background: #1a4f8a; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background 0.2s; margin-top: 6px;
+    }
+    .btn:hover { background: #154070; }
+    .btn:disabled { background: #99b5d3; cursor: not-allowed; }
+    .msg {
+      padding: 10px 14px; border-radius: 8px;
+      font-size: 13px; margin-bottom: 16px; display: none;
+    }
+    .msg.error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .msg.success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .footer { text-align: center; margin-top: 20px; font-size: 13px; color: #777; }
+    .footer a { color: #1a4f8a; font-weight: 600; text-decoration: none; }
+    .divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="icon">📋</div>
+      <h1>Officer Registration</h1>
+      <p>Create your FVO Portal account</p>
+    </div>
+    <div class="msg error"   id="errorMsg"></div>
+    <div class="msg success" id="successMsg"></div>
+    <div class="row">
+      <div class="form-group">
+        <label>Full Name <span class="req">*</span></label>
+        <input type="text" id="name" placeholder="Ramesh Patel" />
+      </div>
+      <div class="form-group">
+        <label>Employee ID <span class="req">*</span></label>
+        <input type="text" id="employee_id" placeholder="FVO001" autocomplete="off" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="form-group">
+        <label>Designation</label>
+        <select id="designation">
+          <option value="">Select…</option>
+          <option>Junior Engineer</option>
+          <option>Assistant Engineer</option>
+          <option>Executive Engineer</option>
+          <option>Field Officer</option>
+          <option>Supervisor</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Department</label>
+        <select id="department">
+          <option value="">Select…</option>
+          <option>Roads & Highways</option>
+          <option>Bridges</option>
+          <option>Urban Development</option>
+          <option>Rural Works</option>
+          <option>Water Resources</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Mobile Number</label>
+      <input type="tel" id="mobile" placeholder="10-digit mobile number" maxlength="10" />
+    </div>
+    <hr class="divider" />
+    <div class="row">
+      <div class="form-group">
+        <label>Password <span class="req">*</span></label>
+        <input type="password" id="password" placeholder="Min 6 characters" />
+      </div>
+      <div class="form-group">
+        <label>Confirm Password <span class="req">*</span></label>
+        <input type="password" id="confirmPassword" placeholder="Repeat password" />
+      </div>
+    </div>
+    <button class="btn" id="registerBtn" onclick="register()">Register</button>
+    <div class="footer">
+      Already have an account? <a href="/login.html">Login here</a>
+    </div>
+  </div>
+
+  <script>
+    async function register() {
+      const name            = document.getElementById('name').value.trim();
+      const employee_id     = document.getElementById('employee_id').value.trim().toUpperCase();
+      const designation     = document.getElementById('designation').value;
+      const department      = document.getElementById('department').value;
+      const mobile          = document.getElementById('mobile').value.trim();
+      const password        = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const btn             = document.getElementById('registerBtn');
+      showMsg('error', ''); showMsg('success', '');
+      if (!name || !employee_id || !password) return showMsg('error', 'Name, Employee ID and Password are required.');
+      if (password.length < 6) return showMsg('error', 'Password must be at least 6 characters.');
+      if (password !== confirmPassword) return showMsg('error', 'Passwords do not match.');
+      if (mobile && !/^\d{10}$/.test(mobile)) return showMsg('error', 'Mobile number must be exactly 10 digits.');
+      btn.disabled = true; btn.textContent = 'Registering…';
+      try {
+        const res  = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, employee_id, designation, department, mobile, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return showMsg('error', data.error || 'Registration failed.');
+        showMsg('success', data.message + ' Redirecting to OTP…');
+        setTimeout(() => {
+          window.location.href = `/otp.html?eid=${encodeURIComponent(employee_id)}`;
+        }, 1200);
+      } catch (err) {
+        showMsg('error', 'Cannot connect to server. Make sure the server is running.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Register';
+      }
+    }
+
+    function showMsg(type, text) {
+      const el = document.getElementById(type + 'Msg');
+      el.textContent = text;
+      el.style.display = text ? 'block' : 'none';
+    }
+  </script>
+</body>
+</html>

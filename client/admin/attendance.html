@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Attendance Records</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+    .navbar {
+      background: #7c3aed; color: #fff; padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .back-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; text-decoration: none;
+    }
+    .main { max-width: 1080px; margin: 0 auto; padding: 28px 20px; }
+
+    .filter-bar {
+      background: #fff; border-radius: 10px; padding: 14px 18px;
+      margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .filter-bar input {
+      padding: 8px 13px; border: 1.5px solid #dde2ea;
+      border-radius: 8px; font-size: 13px; outline: none; flex: 1; min-width: 150px;
+    }
+    .filter-bar input:focus { border-color: #7c3aed; }
+
+    .table-wrap {
+      background: #fff; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f8fafc; color: #64748b; font-size: 11px;
+      font-weight: 700; text-transform: uppercase; padding: 12px 14px; text-align: left;
+    }
+    td { padding: 12px 14px; border-top: 1px solid #f1f5f9; color: #374151; }
+    tr:hover td { background: #fafafa; }
+    .badge {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge.active    { background: #fef9c3; color: #854d0e; }
+    .badge.completed { background: #dcfce7; color: #16a34a; }
+    .empty-state { text-align: center; padding: 32px; color: #94a3b8; }
+
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1a2233; color: #fff; padding: 12px 24px;
+      border-radius: 30px; font-size: 14px; opacity: 0;
+      transition: opacity 0.3s; pointer-events: none; z-index: 300;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">📅 Attendance Records</div>
+  <a class="back-btn" href="/admin/dashboard.html">← Dashboard</a>
+</nav>
+
+<div class="main">
+  <div class="filter-bar">
+    <input type="text" id="searchInput"
+      placeholder="🔍 Search by officer name or employee ID…"
+      oninput="filterTable()" />
+    <input type="date" id="dateFilter" onchange="filterTable()" />
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Officer</th>
+          <th>Employee ID</th>
+          <th>Check In</th>
+          <th>Check In GPS</th>
+          <th>Check Out</th>
+          <th>Duration</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="attTable">
+        <tr><td colspan="8" class="empty-state">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const token = localStorage.getItem('fvo_token');
+  const role  = localStorage.getItem('fvo_role');
+  if (!token || role !== 'admin') window.location.href = '/login.html';
+
+  const AUTH = { 'Authorization': 'Bearer ' + token };
+  let allRecords = [];
+
+  async function loadAttendance() {
+    try {
+      const res  = await fetch('/api/attendance/all', { headers: AUTH });
+      const data = await res.json();
+      allRecords = data.records || [];
+      renderTable(allRecords);
+    } catch (e) {
+      document.getElementById('attTable').innerHTML =
+        '<tr><td colspan="8" class="empty-state">Failed to load records.</td></tr>';
+    }
+  }
+
+  function renderTable(list) {
+    const tbody = document.getElementById('attTable');
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No records found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(r => {
+      const checkin  = r.checkin_time  ? r.checkin_time.split(' ')[1]  : '—';
+      const checkout = r.checkout_time ? r.checkout_time.split(' ')[1] : '—';
+      const gps      = r.checkin_lat
+        ? `${parseFloat(r.checkin_lat).toFixed(4)}, ${parseFloat(r.checkin_lng).toFixed(4)}`
+        : '—';
+      const dur = r.duration_mins !== null
+        ? `${Math.floor(r.duration_mins/60)}h ${r.duration_mins%60}m` : '—';
+      const status = r.checkout_time ? 'completed' : 'active';
+      const label  = r.checkout_time ? 'Completed' : 'Active';
+      return `
+        <tr>
+          <td>${r.date}</td>
+          <td><strong>${r.name || '—'}</strong></td>
+          <td>${r.employee_id}</td>
+          <td>${checkin}</td>
+          <td style="font-size:11px;color:#64748b;">${gps}</td>
+          <td>${checkout}</td>
+          <td>${dur}</td>
+          <td><span class="badge ${status}">${label}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function filterTable() {
+    const q    = document.getElementById('searchInput').value.toLowerCase();
+    const date = document.getElementById('dateFilter').value;
+    renderTable(allRecords.filter(r =>
+      (!date || r.date === date) &&
+      (!q ||
+        (r.name || '').toLowerCase().includes(q) ||
+        r.employee_id.toLowerCase().includes(q)
+      )
+    ));
+  }
+
+  loadAttendance();
+</script>
+</body>
+</html>

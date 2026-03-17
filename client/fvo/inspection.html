@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Road Inspection</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+
+    /* ── Navbar ── */
+    .navbar {
+      background: #1a4f8a; color: #fff;
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .back-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; cursor: pointer; text-decoration: none;
+    }
+
+    /* ── Layout ── */
+    .main { max-width: 720px; margin: 0 auto; padding: 28px 20px; }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff; border-radius: 14px;
+      padding: 28px; margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    }
+    .card-title {
+      font-size: 16px; font-weight: 700; color: #1a4f8a;
+      margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 5px; }
+    .req { color: #dc2626; }
+    input, select, textarea {
+      width: 100%; padding: 10px 13px;
+      border: 1.5px solid #dde2ea; border-radius: 8px;
+      font-size: 14px; outline: none; transition: border-color 0.2s;
+      background: #fff; font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #1a4f8a; }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* ── GPS status bar ── */
+    .gps-bar {
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 13px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .gps-bar.loading { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .gps-bar.ready   { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .gps-bar.error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-full { width: 100%; }
+    .btn-primary  { background: #1a4f8a; color: #fff; }
+    .btn-primary:hover  { background: #154070; }
+    .btn-success  { background: #22c55e; color: #fff; }
+    .btn-success:hover  { background: #16a34a; }
+    .btn-danger   { background: #ef4444; color: #fff; }
+    .btn-danger:hover   { background: #dc2626; }
+    .btn-purple   { background: #7c3aed; color: #fff; }
+    .btn-purple:hover   { background: #6d28d9; }
+    .btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 12px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ── Camera ── */
+    .camera-wrap {
+      position: relative; background: #000;
+      border-radius: 12px; overflow: hidden;
+      margin-bottom: 16px; aspect-ratio: 16/9;
+    }
+    #videoEl {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+    .camera-overlay {
+      position: absolute; top: 12px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      pointer-events: none;
+    }
+    .rec-badge {
+      background: rgba(239,68,68,0.9); color: #fff;
+      font-size: 12px; font-weight: 700;
+      padding: 4px 10px; border-radius: 20px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .rec-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #fff; animation: blink 1s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    .gps-overlay {
+      background: rgba(0,0,0,0.55); color: #fff;
+      font-size: 11px; padding: 4px 10px; border-radius: 8px;
+    }
+
+    /* ── Stats row ── */
+    .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .stat-tile {
+      background: #f8fafc; border-radius: 10px;
+      padding: 12px; text-align: center;
+    }
+    .stat-tile .num { font-size: 22px; font-weight: 800; color: #1a4f8a; }
+    .stat-tile .lbl { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    /* ── Photo strip ── */
+    .photo-strip-wrap {
+      overflow-x: auto; white-space: nowrap;
+      margin-bottom: 16px; padding: 4px 0;
+    }
+    .photo-strip-wrap::-webkit-scrollbar { height: 4px; }
+    .photo-strip-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+    .photo-thumb {
+      display: inline-block; width: 72px; height: 72px;
+      border-radius: 8px; object-fit: cover;
+      margin-right: 8px; border: 2px solid #e2e8f0;
+      vertical-align: top;
+    }
+    .no-photos-hint {
+      font-size: 13px; color: #94a3b8;
+      padding: 20px 0; text-align: center;
+    }
+
+    /* ── Photo grid (review) ── */
+    .photo-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin-bottom: 16px;
+    }
+    .photo-grid img {
+      width: 100%; aspect-ratio: 1;
+      object-fit: cover; border-radius: 8px;
+      border: 2px solid #e2e8f0;
+    }
+
+    /* ── Summary box ── */
+    .summary-box {
+      background: #f8fafc; border-radius: 10px;
+      padding: 16px; margin-bottom: 16px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .summary-item .lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+    .summary-item .val { font-size: 14px; font-weight: 700; color: #1a2233; margin-top: 2px; }
+
+    /* ── History table ── */
+    .section-title {
+      font-size: 13px; font-weight: 700; color: #555;
+      margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .table-wrap { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f8fafc; color: #64748b;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; padding: 11px 14px; text-align: left;
+    }
+    td { padding: 11px 14px; border-top: 1px solid #f1f5f9; color: #374151; }
+    tr:hover td { background: #fafafa; }
+    .badge {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge.active    { background: #fef9c3; color: #854d0e; }
+    .badge.submitted { background: #dbeafe; color: #1d4ed8; }
+    .badge.approved  { background: #dcfce7; color: #16a34a; }
+    .badge.flagged   { background: #fee2e2; color: #dc2626; }
+    .empty-state { text-align: center; padding: 28px; color: #94a3b8; font-size: 14px; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1a2233; color: #fff;
+      padding: 12px 24px; border-radius: 30px; font-size: 14px;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ── Phase visibility ── */
+    .phase { display: none; }
+    .phase.active { display: block; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">🛣️ Road Inspection</div>
+  <a class="back-btn" href="/fvo/dashboard.html">← Dashboard</a>
+</nav>
+
+<div class="main">
+
+  <!-- ═══════════════════════════════════════════════════════
+       PHASE 1 — SETUP FORM
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="phase active" id="phase-setup">
+    <div class="card">
+      <div class="card-title">🛣️ Start New Inspection</div>
+
+      <div id="setupGpsBar" class="gps-bar loading">
+        📡 Getting GPS location…
+      </div>
+
+      <div class="form-group">
+        <label>Site Name <span class="req">*</span></label>
+        <input type="text" id="siteName" placeholder="e.g. NH-48 Surat Bypass" />
+      </div>
+      <div class="form-group">
+        <label>Road / Location <span class="req">*</span></label>
+        <input type="text" id="roadName" placeholder="e.g. Km 14+200 to Km 15+000" />
+      </div>
+      <div class="form-group">
+        <label>Contract</label>
+        <select id="contractId">
+          <option value="">Select contract…</option>
+          <option value="C-2024-RH-001">C-2024-RH-001 — Surat Ring Road Phase 2</option>
+          <option value="C-2024-RH-002">C-2024-RH-002 — Tapi Bridge Approach Road</option>
+          <option value="C-2024-RH-003">C-2024-RH-003 — Hazira Industrial Connector</option>
+          <option value="C-2024-RH-004">C-2024-RH-004 — Udhna–Sachin Corridor</option>
+        </select>
+      </div>
+
+      <button class="btn btn-success btn-full" id="startBtn" onclick="startInspection()" disabled>
+        📍 Get GPS & Start Inspection
+      </button>
+    </div>
+
+    <!-- History shown below setup form -->
+    <p class="section-title">Past Inspections</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Site</th><th>Road</th>
+            <th>Photos</th><th>Coverage</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="6" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PHASE 2 — ACTIVE INSPECTION (CAMERA + GPS TRAIL)
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-active">
+    <div class="card">
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-tile">
+          <div class="num" id="statPhotos">0</div>
+          <div class="lbl">📸 Photos</div>
+        </div>
+        <div class="stat-tile">
+          <div class="num" id="statTrail">0</div>
+          <div class="lbl">📍 Trail pts</div>
+        </div>
+        <div class="stat-tile">
+          <div class="num" id="statDuration">0m</div>
+          <div class="lbl">⏱ Duration</div>
+        </div>
+      </div>
+
+      <!-- Camera -->
+      <div class="camera-wrap">
+        <video id="videoEl" autoplay playsinline muted></video>
+        <div class="camera-overlay">
+          <div class="rec-badge"><div class="rec-dot"></div> REC</div>
+          <div class="gps-overlay" id="cameraGpsText">GPS…</div>
+        </div>
+      </div>
+
+      <!-- Photo strip -->
+      <div class="photo-strip-wrap" id="photoStrip">
+        <div class="no-photos-hint">No photos yet — tap Capture to take your first photo</div>
+      </div>
+
+      <!-- Capture + End buttons -->
+      <div class="btn-row">
+        <button class="btn btn-primary" id="captureBtn" onclick="capturePhoto()">
+          📸 Capture Photo
+        </button>
+        <button class="btn btn-danger" onclick="endInspection()">
+          🏁 End Inspection
+        </button>
+      </div>
+
+      <!-- Manual trail point for testing -->
+      <button class="btn btn-full"
+        style="margin-top:10px; background:#f1f5f9; color:#475569; font-size:12px;"
+        onclick="recordTrailPointNow()">
+        📌 Record Trail Point Now (for testing)
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PHASE 3 — REVIEW & SUBMIT
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-review">
+    <div class="card">
+      <div class="card-title">✅ Review & Submit</div>
+
+      <div class="summary-box">
+        <div class="summary-item">
+          <div class="lbl">Site</div>
+          <div class="val" id="reviewSite">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Road</div>
+          <div class="val" id="reviewRoad">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Photos taken</div>
+          <div class="val" id="reviewPhotos">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Trail points</div>
+          <div class="val" id="reviewTrail">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Est. Coverage</div>
+          <div class="val" id="reviewCoverage">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Duration</div>
+          <div class="val" id="reviewDuration">—</div>
+        </div>
+      </div>
+
+      <!-- Photo grid preview -->
+      <div class="photo-grid" id="reviewPhotoGrid"></div>
+
+      <div class="form-group">
+        <label>Remarks / Observations</label>
+        <textarea id="remarksInput" placeholder="Describe road condition, issues found, materials observed…"></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" style="background:#f1f5f9;color:#475569;"
+          onclick="goBackToActive()">← Back</button>
+        <button class="btn btn-purple" onclick="submitInspection()" id="submitBtn">
+          ✅ Submit Inspection
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Auth guard ────────────────────────────────────────────
+  const token = localStorage.getItem('fvo_token');
+  if (!token) window.location.href = '/login.html';
+
+  const AUTH = { 'Authorization': 'Bearer ' + token };
+  const JSON_HEADERS = { 'Content-Type': 'application/json', ...AUTH };
+
+  // ── State ─────────────────────────────────────────────────
+  let inspectionId   = null;
+  let currentGPS     = null;
+  let cameraStream   = null;
+  let gpsWatchId     = null;
+  let gpsTrailArr    = [];
+  let trailInterval  = null;
+  let durationInterval = null;
+  let startTimestamp = null;
+  let capturedPhotos = [];   // [{url, lat, lng}]
+
+  // Change to 5000 (5 seconds) for quick testing, 30000 for real use
+  const TRAIL_INTERVAL_MS = 30000;
+
+  // ── Phase switcher ────────────────────────────────────────
+  function showPhase(name) {
+    document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
+    document.getElementById('phase-' + name).classList.add('active');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  PHASE 1 — SETUP
+  // ══════════════════════════════════════════════════════════
+
+  // Get GPS on page load for setup form
+  function initSetupGPS() {
+    const bar = document.getElementById('setupGpsBar');
+    if (!navigator.geolocation) {
+      bar.className = 'gps-bar error';
+      bar.textContent = '❌ GPS not supported on this browser.';
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        bar.className = 'gps-bar ready';
+        bar.textContent =
+          `✅ GPS ready — ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)} (±${Math.round(pos.coords.accuracy)}m)`;
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').textContent = '📍 Start Inspection';
+      },
+      err => {
+        bar.className = 'gps-bar error';
+        bar.textContent = err.code === 1
+          ? '❌ Location denied. Allow location access and reload.'
+          : '❌ GPS unavailable. Move to an open area and reload.';
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
+
+  async function startInspection() {
+    const siteName   = document.getElementById('siteName').value.trim();
+    const roadName   = document.getElementById('roadName').value.trim();
+    const contractId = document.getElementById('contractId').value;
+    const btn        = document.getElementById('startBtn');
+
+    if (!siteName || !roadName) return showToast('Please fill in Site Name and Road Name.');
+    if (!currentGPS)            return showToast('GPS not ready. Please wait.');
+
+    btn.disabled = true;
+    btn.textContent = 'Starting…';
+
+    try {
+      const res  = await fetch('/api/inspection/start', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          site_name:   siteName,
+          road_name:   roadName,
+          contract_id: contractId,
+          start_lat:   currentGPS.lat,
+          start_lng:   currentGPS.lng
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok) return showToast(data.error || 'Could not start inspection.');
+
+      inspectionId   = data.inspection_id;
+      startTimestamp = Date.now();
+
+      await startCamera();
+      startGPSTrail();
+      startDurationTimer();
+
+      // Pre-fill review summary
+      document.getElementById('reviewSite').textContent = siteName;
+      document.getElementById('reviewRoad').textContent = roadName;
+
+      showPhase('active');
+      showToast('✅ Inspection started! Camera and GPS are live.');
+
+    } catch (e) {
+      showToast('Server error. Try again.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📍 Start Inspection';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  PHASE 2 — ACTIVE
+  // ══════════════════════════════════════════════════════════
+
+  async function startCamera() {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' }, // rear camera
+          width:  { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      document.getElementById('videoEl').srcObject = cameraStream;
+    } catch (err) {
+      showToast('⚠️ Camera unavailable. You can still record GPS trail.');
+      console.warn('Camera error:', err.message);
+    }
+  }
+
+  function stopCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
+    }
+  }
+
+  function startGPSTrail() {
+    // Watch GPS continuously (updates currentGPS live)
+    gpsWatchId = navigator.geolocation.watchPosition(
+      pos => {
+        currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        document.getElementById('cameraGpsText').textContent =
+          `📍 ${currentGPS.lat.toFixed(4)}, ${currentGPS.lng.toFixed(4)}`;
+      },
+      err => console.warn('GPS watch error:', err.message),
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+
+    // Auto-record a trail point every TRAIL_INTERVAL_MS
+    trailInterval = setInterval(() => {
+      recordTrailPointNow();
+    }, TRAIL_INTERVAL_MS);
+  }
+
+  function recordTrailPointNow() {
+    if (!currentGPS) { showToast('GPS not ready yet.'); return; }
+    gpsTrailArr.push({
+      lat:  currentGPS.lat,
+      lng:  currentGPS.lng,
+      time: new Date().toISOString()
+    });
+    document.getElementById('statTrail').textContent = gpsTrailArr.length;
+    showToast(`📌 Trail point ${gpsTrailArr.length} recorded`);
+  }
+
+  function stopGPSTrail() {
+    if (gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
+    if (trailInterval)       clearInterval(trailInterval);
+  }
+
+  function startDurationTimer() {
+    durationInterval = setInterval(() => {
+      const mins = Math.floor((Date.now() - startTimestamp) / 60000);
+      document.getElementById('statDuration').textContent = mins + 'm';
+      document.getElementById('reviewDuration').textContent = mins + ' min';
+    }, 30000);
+  }
+
+  async function capturePhoto() {
+    const video = document.getElementById('videoEl');
+    if (!video.srcObject) return showToast('Camera not available.');
+    if (!currentGPS)      return showToast('GPS not ready yet.');
+
+    const btn = document.getElementById('captureBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = video.videoWidth  || 1280;
+    canvas.height = video.videoHeight || 720;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(async (blob) => {
+      const formData = new FormData();
+      formData.append('file',          blob, `photo_${Date.now()}.jpg`);
+      formData.append('inspection_id', inspectionId);
+      formData.append('lat',           currentGPS.lat);
+      formData.append('lng',           currentGPS.lng);
+      formData.append('sequence',      capturedPhotos.length + 1);
+
+      try {
+        const res  = await fetch('/api/inspection/photo', {
+          method:  'POST',
+          headers: AUTH,   // no Content-Type — let browser set multipart boundary
+          body:    formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) { showToast(data.error || 'Photo upload failed.'); return; }
+
+        capturedPhotos.push({ url: data.url, lat: currentGPS.lat, lng: currentGPS.lng });
+
+        // Add thumbnail to strip
+        const strip = document.getElementById('photoStrip');
+        if (capturedPhotos.length === 1) strip.innerHTML = ''; // clear hint
+        const img = document.createElement('img');
+        img.src = data.url;
+        img.className = 'photo-thumb';
+        img.alt = `Photo ${capturedPhotos.length}`;
+        strip.appendChild(img);
+
+        document.getElementById('statPhotos').textContent = capturedPhotos.length;
+        showToast(`📸 Photo ${capturedPhotos.length} saved!`);
+
+      } catch (e) {
+        showToast('Upload failed — check server connection.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '📸 Capture Photo';
+      }
+    }, 'image/jpeg', 0.85);
+  }
+
+  function endInspection() {
+    if (capturedPhotos.length === 0 && gpsTrailArr.length === 0) {
+      return showToast('Please capture at least one photo or trail point before ending.');
+    }
+    stopCamera();
+    stopGPSTrail();
+    clearInterval(durationInterval);
+
+    // Fill review summary
+    const coverage = Math.min(100, Math.round(gpsTrailArr.length / 20 * 100));
+    document.getElementById('reviewPhotos').textContent  = capturedPhotos.length;
+    document.getElementById('reviewTrail').textContent   = gpsTrailArr.length + ' pts';
+    document.getElementById('reviewCoverage').textContent = coverage + '%';
+
+    // Fill photo grid
+    const grid = document.getElementById('reviewPhotoGrid');
+    grid.innerHTML = capturedPhotos.length
+      ? capturedPhotos.map(p => `<img src="${p.url}" alt="photo" />`).join('')
+      : '<p style="color:#94a3b8;font-size:13px;grid-column:1/-1;text-align:center;">No photos captured.</p>';
+
+    showPhase('review');
+  }
+
+  function goBackToActive() {
+    startCamera();   // restart camera
+    startGPSTrail(); // restart trail
+    showPhase('active');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  PHASE 3 — SUBMIT
+  // ══════════════════════════════════════════════════════════
+
+  async function submitInspection() {
+    const remarks = document.getElementById('remarksInput').value.trim();
+    const btn     = document.getElementById('submitBtn');
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    try {
+      const res  = await fetch('/api/inspection/submit', {
+        method:  'POST',
+        headers: JSON_HEADERS,
+        body:    JSON.stringify({
+          inspection_id: inspectionId,
+          gps_trail:     gpsTrailArr,
+          remarks
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { showToast(data.error || 'Submit failed.'); return; }
+
+      showToast(`✅ Submitted! Coverage: ${data.coverage_percent}%`);
+      setTimeout(() => window.location.href = '/fvo/dashboard.html', 2000);
+
+    } catch (e) {
+      showToast('Server error. Try again.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✅ Submit Inspection';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  HISTORY TABLE
+  // ══════════════════════════════════════════════════════════
+
+  async function loadHistory() {
+    try {
+      const res  = await fetch('/api/inspection/history', { headers: AUTH });
+      const data = await res.json();
+      const tbody = document.getElementById('historyBody');
+
+      if (!data.records || data.records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No inspections yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.records.map(r => `
+        <tr>
+          <td>${r.date || '—'}</td>
+          <td>${r.site_name}</td>
+          <td>${r.road_name}</td>
+          <td>${r.photo_count}</td>
+          <td>${r.coverage_percent}%</td>
+          <td><span class="badge ${r.status}">${r.status}</span></td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      console.error('History load failed', e);
+    }
+  }
+
+  // ── Toast helper ──────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // ── Init ──────────────────────────────────────────────────
+  initSetupGPS();
+  loadHistory();
+</script>
+</body>
+</html>

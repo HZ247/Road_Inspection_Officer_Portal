@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Material Check Review</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+    .navbar {
+      background: #7c3aed; color: #fff; padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .back-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; text-decoration: none;
+    }
+    .main { max-width: 1080px; margin: 0 auto; padding: 28px 20px; }
+
+    .filter-bar {
+      background: #fff; border-radius: 10px; padding: 14px 18px;
+      margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: 8px 13px; border: 1.5px solid #dde2ea;
+      border-radius: 8px; font-size: 13px; outline: none; flex: 1; min-width: 150px;
+    }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: #7c3aed; }
+
+    .table-wrap {
+      background: #fff; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 24px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f8fafc; color: #64748b; font-size: 11px;
+      font-weight: 700; text-transform: uppercase; padding: 12px 14px; text-align: left;
+    }
+    td { padding: 12px 14px; border-top: 1px solid #f1f5f9; color: #374151; }
+    tr:hover td { background: #fafafa; }
+    .badge {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge.ok           { background: #dcfce7; color: #16a34a; }
+    .badge.discrepancy  { background: #fee2e2; color: #dc2626; }
+    .badge.submitted    { background: #dbeafe; color: #1d4ed8; }
+    .badge.approved     { background: #dcfce7; color: #16a34a; }
+    .badge.flagged      { background: #fee2e2; color: #dc2626; }
+    .view-btn {
+      background: #ede9fe; color: #7c3aed; border: none;
+      padding: 5px 12px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .view-btn:hover { background: #ddd6fe; }
+    .empty-state { text-align: center; padding: 32px; color: #94a3b8; }
+
+    /* Detail panel */
+    .detail-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 100; display: none;
+    }
+    .detail-overlay.open { display: block; }
+    .detail-panel {
+      position: fixed; top: 0; right: -700px; width: 680px;
+      height: 100%; background: #fff; overflow-y: auto;
+      z-index: 101; box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+      transition: right 0.3s ease; padding-bottom: 40px;
+    }
+    .detail-panel.open { right: 0; }
+
+    .detail-header {
+      background: #7c3aed; color: #fff; padding: 18px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .detail-header h3 { font-size: 16px; }
+    .close-btn {
+      background: rgba(255,255,255,0.2); color: #fff;
+      border: none; padding: 6px 12px; border-radius: 6px;
+      font-size: 13px; cursor: pointer;
+    }
+    .detail-body { padding: 24px; }
+
+    .meta-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;
+    }
+    .meta-item .lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+    .meta-item .val { font-size: 14px; font-weight: 600; color: #1a2233; margin-top: 2px; }
+
+    .section-title {
+      font-size: 13px; font-weight: 700; color: #555;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+    }
+
+    /* Items table inside panel */
+    .items-table-wrap {
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid #e2e8f0; margin-bottom: 20px;
+    }
+    .items-table-wrap table { font-size: 12px; }
+    .items-table-wrap th { font-size: 10px; padding: 9px 12px; }
+    .items-table-wrap td { padding: 9px 12px; }
+    .disc-row td { background: #fff7f7 !important; }
+    .disc-val { color: #dc2626; font-weight: 700; }
+    .ok-val   { color: #16a34a; font-weight: 700; }
+    .na-val   { color: #94a3b8; }
+
+    /* Summary pills */
+    .summary-pills {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .pill {
+      padding: 6px 14px; border-radius: 20px;
+      font-size: 13px; font-weight: 600;
+    }
+    .pill.total { background: #f1f5f9; color: #475569; }
+    .pill.disc  { background: #fee2e2; color: #dc2626; }
+    .pill.ok    { background: #dcfce7; color: #16a34a; }
+
+    /* Action */
+    .action-section {
+      background: #f8fafc; border-radius: 10px; padding: 18px; margin-bottom: 16px;
+    }
+    .action-section label {
+      display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 6px;
+    }
+    .action-section textarea {
+      width: 100%; padding: 9px 13px; border: 1.5px solid #dde2ea;
+      border-radius: 8px; font-size: 13px; outline: none;
+      resize: vertical; min-height: 70px;
+      font-family: inherit; margin-bottom: 12px;
+    }
+    .action-section textarea:focus { border-color: #7c3aed; }
+    .action-btns { display: flex; gap: 10px; }
+    .btn-approve {
+      flex: 1; padding: 11px; background: #22c55e; color: #fff;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .btn-approve:hover { background: #16a34a; }
+    .btn-flag {
+      flex: 1; padding: 11px; background: #ef4444; color: #fff;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .btn-flag:hover { background: #dc2626; }
+    .already-reviewed {
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 8px; padding: 12px 16px;
+      font-size: 13px; color: #166534; font-weight: 600;
+    }
+    .already-reviewed.flagged { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+
+    /* Remarks */
+    .remarks-box {
+      background: #f8fafc; border-radius: 8px; padding: 12px 14px;
+      font-size: 13px; color: #475569; margin-bottom: 20px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1a2233; color: #fff; padding: 12px 24px;
+      border-radius: 30px; font-size: 14px; opacity: 0;
+      transition: opacity 0.3s; pointer-events: none; z-index: 300;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">📦 Material Check Review</div>
+  <a class="back-btn" href="/admin/dashboard.html">← Dashboard</a>
+</nav>
+
+<div class="main">
+  <div class="filter-bar">
+    <input type="text" id="searchInput"
+      placeholder="🔍 Search officer, contract, project…"
+      oninput="filterTable()" />
+    <select id="resultFilter" onchange="filterTable()">
+      <option value="">All Results</option>
+      <option value="ok">All Match</option>
+      <option value="discrepancy">Has Discrepancy</option>
+    </select>
+    <select id="statusFilter" onchange="filterTable()">
+      <option value="">All Statuses</option>
+      <option value="submitted">Pending Review</option>
+      <option value="approved">Approved</option>
+      <option value="flagged">Flagged</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Officer</th>
+          <th>Contract</th>
+          <th>Project</th>
+          <th>Result</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="matTable">
+        <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Detail panel -->
+<div class="detail-overlay" id="overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-header">
+    <h3 id="detailTitle">Material Check Detail</h3>
+    <button class="close-btn" onclick="closeDetail()">✕ Close</button>
+  </div>
+  <div class="detail-body">
+    <div class="meta-grid" id="metaGrid"></div>
+    <div class="summary-pills" id="summaryPills"></div>
+    <p class="section-title">📊 Item Verification</p>
+    <div class="items-table-wrap" id="itemsTableWrap"></div>
+    <p class="section-title">📝 Officer Remarks</p>
+    <div class="remarks-box" id="remarksBox"></div>
+    <div id="actionArea"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const token = localStorage.getItem('fvo_token');
+  const role  = localStorage.getItem('fvo_role');
+  if (!token || role !== 'admin') window.location.href = '/login.html';
+
+  const AUTH       = { 'Authorization': 'Bearer ' + token };
+  const JSON_HEADS = { 'Content-Type': 'application/json', ...AUTH };
+  let allRecords   = [];
+
+  async function loadMaterials() {
+    try {
+      const res  = await fetch('/api/material/all', { headers: AUTH });
+      const data = await res.json();
+      allRecords = data.records || [];
+      renderTable(allRecords);
+    } catch (e) {
+      document.getElementById('matTable').innerHTML =
+        '<tr><td colspan="7" class="empty-state">Failed to load records.</td></tr>';
+    }
+  }
+
+  function renderTable(list) {
+    const tbody = document.getElementById('matTable');
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No records found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(r => `
+      <tr>
+        <td>${r.date}</td>
+        <td><strong>${r.name}</strong><br>
+          <span style="font-size:11px;color:#94a3b8;">${r.employee_id}</span></td>
+        <td>${r.contract_id}</td>
+        <td style="font-size:12px;">${r.project_name || '—'}</td>
+        <td><span class="badge ${r.overall_status}">${r.overall_status}</span></td>
+        <td><span class="badge ${r.status}">${r.status}</span></td>
+        <td><button class="view-btn" onclick="openDetail(${r.id})">View →</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function filterTable() {
+    const q      = document.getElementById('searchInput').value.toLowerCase();
+    const result = document.getElementById('resultFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    renderTable(allRecords.filter(r =>
+      (!result || r.overall_status === result) &&
+      (!status || r.status === status) &&
+      (!q ||
+        r.name.toLowerCase().includes(q) ||
+        r.contract_id.toLowerCase().includes(q) ||
+        (r.project_name || '').toLowerCase().includes(q) ||
+        r.employee_id.toLowerCase().includes(q)
+      )
+    ));
+  }
+
+  async function openDetail(id) {
+    document.getElementById('metaGrid').innerHTML    = '<p style="color:#94a3b8">Loading…</p>';
+    document.getElementById('summaryPills').innerHTML = '';
+    document.getElementById('itemsTableWrap').innerHTML = '';
+    document.getElementById('remarksBox').textContent   = '';
+    document.getElementById('actionArea').innerHTML     = '';
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('detailPanel').classList.add('open');
+
+    try {
+      const res  = await fetch(`/api/material/check/${id}`, { headers: AUTH });
+      const data = await res.json();
+      if (!data.success) { showToast('Could not load record.'); return; }
+
+      const chk   = data.check;
+      const items = chk.items_json || [];
+      document.getElementById('detailTitle').textContent =
+        `${chk.contract_id} — ${chk.date}`;
+
+      // Meta
+      document.getElementById('metaGrid').innerHTML = `
+        <div class="meta-item">
+          <div class="lbl">Officer</div>
+          <div class="val">${chk.employee_id}</div>
+        </div>
+        <div class="meta-item">
+          <div class="lbl">Contract</div>
+          <div class="val">${chk.contract_id}</div>
+        </div>
+        <div class="meta-item">
+          <div class="lbl">Date</div>
+          <div class="val">${chk.date}</div>
+        </div>
+        <div class="meta-item">
+          <div class="lbl">GPS</div>
+          <div class="val" style="font-size:12px;">
+            ${chk.gps_lat ? `${parseFloat(chk.gps_lat).toFixed(5)}, ${parseFloat(chk.gps_lng).toFixed(5)}` : 'Not recorded'}
+          </div>
+        </div>
+      `;
+
+      // Summary pills
+      const filled = items.filter(i => i.qty_observed !== null);
+      const discs  = items.filter(i => i.discrepancy);
+      document.getElementById('summaryPills').innerHTML = `
+        <div class="pill total">${filled.length} items filled</div>
+        <div class="pill ok">${filled.length - discs.length} matched</div>
+        <div class="pill disc">${discs.length} discrepanc${discs.length !== 1 ? 'ies' : 'y'}</div>
+      `;
+
+      // Items table — group by category
+      const cats = [...new Set(items.map(i => i.category))];
+      let tableHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Item</th>
+              <th>Unit</th>
+              <th>Contracted</th>
+              <th>Observed</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      cats.forEach(cat => {
+        items.filter(i => i.category === cat).forEach((item, idx) => {
+          const isDisc = item.discrepancy;
+          const obsVal = item.qty_observed !== null ? item.qty_observed : null;
+          let obsDisplay, statusDisplay;
+          if (obsVal === null) {
+            obsDisplay    = '<span class="na-val">—</span>';
+            statusDisplay = '<span class="na-val">Not filled</span>';
+          } else if (isDisc) {
+            const diff = (item.qty_contracted - obsVal).toFixed(1);
+            obsDisplay    = `<span class="disc-val">${obsVal}</span>`;
+            statusDisplay = `<span class="disc-val">⚠️ −${diff}</span>`;
+          } else {
+            obsDisplay    = `<span class="ok-val">${obsVal}</span>`;
+            statusDisplay = `<span class="ok-val">✅ OK</span>`;
+          }
+          tableHTML += `
+            <tr class="${isDisc ? 'disc-row' : ''}">
+              <td style="color:#64748b;font-size:11px;">${idx === 0 ? cat : ''}</td>
+              <td>${item.item_name}</td>
+              <td>${item.unit}</td>
+              <td>${item.qty_contracted}</td>
+              <td>${obsDisplay}</td>
+              <td>${statusDisplay}</td>
+            </tr>
+          `;
+        });
+      });
+      tableHTML += '</tbody></table>';
+      document.getElementById('itemsTableWrap').innerHTML = tableHTML;
+
+      // Remarks
+      document.getElementById('remarksBox').textContent =
+        chk.remarks || 'No remarks provided.';
+
+      // Action
+      const actionArea = document.getElementById('actionArea');
+      if (chk.status === 'approved') {
+        actionArea.innerHTML = `<div class="already-reviewed">✅ Approved</div>`;
+      } else if (chk.status === 'flagged') {
+        const msg = chk.admin_remarks ? ` — "${chk.admin_remarks}"` : '';
+        actionArea.innerHTML =
+          `<div class="already-reviewed flagged">🚩 Flagged${msg}</div>`;
+      } else {
+        actionArea.innerHTML = `
+          <div class="action-section">
+            <label>Admin Remarks (optional)</label>
+            <textarea id="adminRemarkInput"
+              placeholder="Add remarks before approving or flagging…"></textarea>
+            <div class="action-btns">
+              <button class="btn-approve" onclick="reviewMaterial(${id}, 'approve')">
+                ✅ Approve
+              </button>
+              <button class="btn-flag" onclick="reviewMaterial(${id}, 'flag')">
+                🚩 Flag for Re-Check
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error loading detail.');
+    }
+  }
+
+  async function reviewMaterial(id, action) {
+    const remarks = document.getElementById('adminRemarkInput')?.value || '';
+    try {
+      const res  = await fetch(`/api/material/check/${id}/review`, {
+        method: 'PATCH',
+        headers: JSON_HEADS,
+        body: JSON.stringify({ action, admin_remarks: remarks })
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Action failed.'); return; }
+      showToast(action === 'approve' ? '✅ Check approved!' : '🚩 Flagged for re-check.');
+      closeDetail();
+      loadMaterials();
+    } catch (e) {
+      showToast('Server error.');
+    }
+  }
+
+  function closeDetail() {
+    document.getElementById('overlay').classList.remove('open');
+    document.getElementById('detailPanel').classList.remove('open');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  loadMaterials();
+</script>
+</body>
+</html>

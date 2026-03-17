@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Site Attendance</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+
+    .navbar {
+      background: #1a4f8a; color: #fff;
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .back-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; cursor: pointer; text-decoration: none;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+    .main { max-width: 700px; margin: 0 auto; padding: 32px 20px; }
+
+    /* Status card */
+    .status-card {
+      background: #fff; border-radius: 14px;
+      padding: 28px; margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      text-align: center;
+    }
+    .status-icon { font-size: 52px; margin-bottom: 12px; }
+    .status-label {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 6px;
+    }
+    .status-label.out    { color: #94a3b8; }
+    .status-label.in     { color: #16a34a; }
+    .status-label.done   { color: #7c3aed; }
+    .status-time { font-size: 28px; font-weight: 800; color: #1a2233; margin-bottom: 4px; }
+    .status-sub  { font-size: 13px; color: #94a3b8; }
+
+    /* GPS box */
+    .gps-box {
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 10px; padding: 12px 16px; margin: 16px 0;
+      font-size: 13px; color: #166534; display: none;
+    }
+    .gps-box.error { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+    .gps-box.loading { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+
+    /* Action button */
+    .action-btn {
+      width: 100%; padding: 16px;
+      border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; margin-top: 8px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .action-btn.checkin  { background: #22c55e; color: #fff; }
+    .action-btn.checkin:hover  { background: #16a34a; }
+    .action-btn.checkout { background: #ef4444; color: #fff; }
+    .action-btn.checkout:hover { background: #dc2626; }
+    .action-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1a2233; color: #fff;
+      padding: 12px 24px; border-radius: 30px;
+      font-size: 14px; font-weight: 500;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+      white-space: nowrap; z-index: 999;
+    }
+    .toast.show { opacity: 1; }
+
+    /* Info row */
+    .info-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;
+    }
+    .info-tile {
+      background: #fff; border-radius: 12px; padding: 16px 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .info-tile .lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .info-tile .val { font-size: 15px; font-weight: 700; color: #1a2233; }
+
+    /* History table */
+    .section-title {
+      font-size: 14px; font-weight: 700; color: #555;
+      margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .table-wrap {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f8fafc; color: #64748b;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 12px 16px; text-align: left;
+    }
+    td { padding: 12px 16px; border-top: 1px solid #f1f5f9; color: #374151; }
+    tr:hover td { background: #fafafa; }
+    .badge {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge.in    { background: #dcfce7; color: #16a34a; }
+    .badge.done  { background: #ede9fe; color: #7c3aed; }
+    .empty-state { text-align: center; padding: 32px; color: #94a3b8; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="brand">📍 Site Attendance</div>
+    <a class="back-btn" href="/fvo/dashboard.html">← Dashboard</a>
+  </nav>
+
+  <div class="main">
+
+    <!-- Officer info tiles -->
+    <div class="info-row">
+      <div class="info-tile">
+        <div class="lbl">Officer</div>
+        <div class="val" id="tileOfficer">—</div>
+      </div>
+      <div class="info-tile">
+        <div class="lbl">Today's Date</div>
+        <div class="val" id="tileDate">—</div>
+      </div>
+    </div>
+
+    <!-- Status card -->
+    <div class="status-card" id="statusCard">
+      <div class="status-icon" id="statusIcon">🕐</div>
+      <div class="status-label out" id="statusLabel">Loading…</div>
+      <div class="status-time" id="statusTime">—</div>
+      <div class="status-sub"  id="statusSub">Fetching your status…</div>
+
+      <div class="gps-box loading" id="gpsBox">📡 Waiting for GPS signal…</div>
+
+      <button class="action-btn checkin" id="actionBtn" onclick="handleAction()" disabled>
+        <span id="btnIcon">📍</span>
+        <span id="btnText">Loading…</span>
+      </button>
+    </div>
+
+    <!-- History -->
+    <p class="section-title">Attendance History</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Check In</th>
+            <th>Check Out</th>
+            <th>Duration</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="5" class="empty-state">Loading history…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── Auth guard ─────────────────────────────────────────
+    const token = localStorage.getItem('fvo_token');
+    if (!token) window.location.href = '/login.html';
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    };
+
+    let currentGPS  = null;   // { lat, lng } once GPS is ready
+    let currentStatus = null; // 'not_checked_in' | 'checked_in' | 'checked_out'
+
+    // ── Fill info tiles ────────────────────────────────────
+    document.getElementById('tileOfficer').textContent =
+      localStorage.getItem('fvo_name') + ' (' + localStorage.getItem('fvo_employee_id') + ')';
+    document.getElementById('tileDate').textContent = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'short', year: 'numeric'
+    });
+
+    // ── Load today's status ────────────────────────────────
+    async function loadTodayStatus() {
+      try {
+        const res  = await fetch('/api/attendance/today', { headers });
+        const data = await res.json();
+        if (!data.success) return;
+
+        currentStatus = data.status;
+        renderStatus(data.status, data.record);
+      } catch (e) {
+        showToast('Could not load attendance status.');
+      }
+    }
+
+    function renderStatus(status, record) {
+      const icon  = document.getElementById('statusIcon');
+      const label = document.getElementById('statusLabel');
+      const time  = document.getElementById('statusTime');
+      const sub   = document.getElementById('statusSub');
+      const btn   = document.getElementById('actionBtn');
+      const btnTx = document.getElementById('btnText');
+      const btnIc = document.getElementById('btnIcon');
+
+      if (status === 'not_checked_in') {
+        icon.textContent  = '🕐';
+        label.className   = 'status-label out';
+        label.textContent = 'Not Checked In';
+        time.textContent  = '—';
+        sub.textContent   = 'Tap Check In when you arrive at the site.';
+        btn.className     = 'action-btn checkin';
+        btnIc.textContent = '📍';
+        btnTx.textContent = 'Check In';
+
+      } else if (status === 'checked_in') {
+        icon.textContent  = '✅';
+        label.className   = 'status-label in';
+        label.textContent = 'Checked In';
+        time.textContent  = record.checkin_time.split(' ')[1];
+        sub.textContent   = `GPS: ${record.checkin_lat.toFixed(5)}, ${record.checkin_lng.toFixed(5)}`;
+        btn.className     = 'action-btn checkout';
+        btnIc.textContent = '🚪';
+        btnTx.textContent = 'Check Out';
+
+      } else if (status === 'checked_out') {
+        const dur = record.duration_mins;
+        icon.textContent  = '🏁';
+        label.className   = 'status-label done';
+        label.textContent = 'Completed';
+        time.textContent  = `${Math.floor(dur/60)}h ${dur%60}m`;
+        sub.textContent   = `In: ${record.checkin_time.split(' ')[1]}  →  Out: ${record.checkout_time.split(' ')[1]}`;
+        btn.disabled      = true;
+        btn.className     = 'action-btn';
+        btnIc.textContent = '✔️';
+        btnTx.textContent = 'Attendance Completed for Today';
+      }
+
+      // Enable button only if GPS is ready and not completed
+      if (status !== 'checked_out') {
+        btn.disabled = (currentGPS === null);
+      }
+    }
+
+    // ── Get GPS ────────────────────────────────────────────
+    function getGPS() {
+      const box = document.getElementById('gpsBox');
+      box.style.display = 'block';
+      box.className = 'gps-box loading';
+      box.textContent = '📡 Getting your GPS location…';
+
+      if (!navigator.geolocation) {
+        box.className = 'gps-box error';
+        box.textContent = '❌ GPS not supported on this device/browser.';
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          box.className = 'gps-box';
+          box.textContent =
+            `✅ GPS ready — Lat: ${currentGPS.lat.toFixed(5)}, Lng: ${currentGPS.lng.toFixed(5)} (±${Math.round(pos.coords.accuracy)}m)`;
+
+          // Enable button now that GPS is ready
+          const btn = document.getElementById('actionBtn');
+          if (currentStatus !== 'checked_out') btn.disabled = false;
+        },
+        (err) => {
+          box.className = 'gps-box error';
+          if (err.code === 1) {
+            box.textContent = '❌ Location access denied. Please allow location in browser settings.';
+          } else if (err.code === 2) {
+            box.textContent = '❌ GPS unavailable. Try moving to an open area.';
+          } else {
+            box.textContent = '❌ GPS timed out. Reload the page to try again.';
+          }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+
+    // ── Handle Check In / Check Out ────────────────────────
+    async function handleAction() {
+      if (!currentGPS) return showToast('GPS not ready yet. Please wait.');
+
+      const btn    = document.getElementById('actionBtn');
+      const isIn   = currentStatus === 'not_checked_in';
+      const url    = isIn ? '/api/attendance/checkin' : '/api/attendance/checkout';
+      const origTx = document.getElementById('btnText').textContent;
+
+      btn.disabled = true;
+      document.getElementById('btnText').textContent = isIn ? 'Checking in…' : 'Checking out…';
+
+      try {
+        const res  = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ lat: currentGPS.lat, lng: currentGPS.lng })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Action failed.');
+          btn.disabled = false;
+          document.getElementById('btnText').textContent = origTx;
+          return;
+        }
+
+        showToast('✅ ' + data.message);
+        // Reload status + history
+        await loadTodayStatus();
+        await loadHistory();
+
+      } catch (e) {
+        showToast('Server error. Try again.');
+        btn.disabled = false;
+        document.getElementById('btnText').textContent = origTx;
+      }
+    }
+
+    // ── Load history table ─────────────────────────────────
+    async function loadHistory() {
+      try {
+        const res  = await fetch('/api/attendance/history', { headers });
+        const data = await res.json();
+        const tbody = document.getElementById('historyBody');
+
+        if (!data.records || data.records.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No attendance records yet.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.records.map(r => {
+          const checkin  = r.checkin_time  ? r.checkin_time.split(' ')[1]  : '—';
+          const checkout = r.checkout_time ? r.checkout_time.split(' ')[1] : '—';
+          const dur = r.duration_mins !== null
+            ? `${Math.floor(r.duration_mins/60)}h ${r.duration_mins%60}m` : '—';
+          const status = r.checkout_time
+            ? '<span class="badge done">Completed</span>'
+            : '<span class="badge in">Active</span>';
+          return `<tr>
+            <td>${r.date}</td>
+            <td>${checkin}</td>
+            <td>${checkout}</td>
+            <td>${dur}</td>
+            <td>${status}</td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        console.error('History load failed', e);
+      }
+    }
+
+    // ── Toast helper ───────────────────────────────────────
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // ── Init ───────────────────────────────────────────────
+    loadTodayStatus();
+    loadHistory();
+    getGPS();
+  </script>
+</body>
+</html>

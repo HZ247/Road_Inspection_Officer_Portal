@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Material & Equipment Check</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+
+    /* ── Navbar ── */
+    .navbar {
+      background: #1a4f8a; color: #fff;
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .back-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; cursor: pointer; text-decoration: none;
+    }
+
+    /* ── Layout ── */
+    .main { max-width: 800px; margin: 0 auto; padding: 28px 20px; }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff; border-radius: 14px;
+      padding: 24px; margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    }
+    .card-title {
+      font-size: 16px; font-weight: 700; color: #1a4f8a;
+      margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── Form elements ── */
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 5px; }
+    .req { color: #dc2626; }
+    select, input, textarea {
+      width: 100%; padding: 10px 13px;
+      border: 1.5px solid #dde2ea; border-radius: 8px;
+      font-size: 14px; outline: none; transition: border-color 0.2s;
+      background: #fff; font-family: inherit;
+    }
+    select:focus, input:focus, textarea:focus { border-color: #1a4f8a; }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* ── Contract info banner ── */
+    .contract-banner {
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;
+      display: none;
+    }
+    .contract-banner.show { display: block; }
+    .contract-banner .cn { font-size: 14px; font-weight: 700; color: #1d4ed8; }
+    .contract-banner .cd { font-size: 12px; color: #3b82f6; margin-top: 3px; }
+
+    /* ── GPS bar ── */
+    .gps-bar {
+      border-radius: 8px; padding: 9px 13px;
+      font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .gps-bar.loading { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .gps-bar.ready   { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .gps-bar.error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+    /* ── Discrepancy summary bar ── */
+    .disc-bar {
+      border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+      font-size: 13px; font-weight: 600; display: none;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .disc-bar.ok   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .disc-bar.warn { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+
+    /* ── Category section ── */
+    .category-block { margin-bottom: 24px; }
+    .category-label {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: #64748b;
+      padding: 8px 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 0;
+    }
+
+    /* ── Item rows ── */
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr 80px 90px 90px 36px;
+      gap: 8px; align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-name { font-size: 13px; color: #1a2233; font-weight: 500; }
+    .item-unit { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .qty-contracted {
+      font-size: 13px; color: #475569;
+      text-align: center; font-weight: 600;
+    }
+    .qty-input {
+      padding: 7px 9px; font-size: 13px;
+      border: 1.5px solid #dde2ea; border-radius: 8px;
+      text-align: center; width: 100%; outline: none;
+      transition: border-color 0.2s;
+    }
+    .qty-input:focus { border-color: #1a4f8a; }
+    .qty-input.discrepancy { border-color: #ef4444; background: #fef2f2; color: #dc2626; }
+    .qty-input.ok          { border-color: #22c55e; background: #f0fdf4; }
+
+    /* Flag icon */
+    .flag-icon { font-size: 16px; text-align: center; }
+
+    /* Column headers */
+    .item-header {
+      display: grid;
+      grid-template-columns: 1fr 80px 90px 90px 36px;
+      gap: 8px;
+      padding: 6px 0 8px;
+      font-size: 11px; font-weight: 700;
+      color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .item-header span:nth-child(3),
+    .item-header span:nth-child(4) { text-align: center; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-full  { width: 100%; }
+    .btn-primary { background: #1a4f8a; color: #fff; }
+    .btn-primary:hover { background: #154070; }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-purple  { background: #7c3aed; color: #fff; }
+    .btn-purple:hover  { background: #6d28d9; }
+    .btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 12px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ── Summary card ── */
+    .summary-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;
+    }
+    .summary-item .lbl {
+      font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .summary-item .val { font-size: 15px; font-weight: 700; color: #1a2233; margin-top: 2px; }
+    .val.red    { color: #dc2626; }
+    .val.green  { color: #16a34a; }
+
+    /* ── Discrepancy list ── */
+    .disc-list { margin-bottom: 18px; }
+    .disc-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; background: #fef2f2;
+      border-radius: 8px; margin-bottom: 6px; font-size: 13px;
+    }
+    .disc-item .di-name { color: #1a2233; font-weight: 500; }
+    .disc-item .di-diff { color: #dc2626; font-weight: 700; }
+    .no-disc {
+      text-align: center; padding: 16px;
+      background: #f0fdf4; border-radius: 8px;
+      color: #16a34a; font-weight: 600; font-size: 13px; margin-bottom: 18px;
+    }
+
+    /* ── History table ── */
+    .section-title {
+      font-size: 13px; font-weight: 700; color: #555;
+      margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .table-wrap {
+      background: #fff; border-radius: 12px;
+      overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f8fafc; color: #64748b;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      padding: 11px 14px; text-align: left;
+    }
+    td { padding: 11px 14px; border-top: 1px solid #f1f5f9; color: #374151; }
+    tr:hover td { background: #fafafa; }
+    .badge {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge.ok           { background: #dcfce7; color: #16a34a; }
+    .badge.discrepancy  { background: #fee2e2; color: #dc2626; }
+    .badge.submitted    { background: #dbeafe; color: #1d4ed8; }
+    .badge.approved     { background: #dcfce7; color: #16a34a; }
+    .badge.flagged      { background: #fee2e2; color: #dc2626; }
+    .empty-state { text-align: center; padding: 28px; color: #94a3b8; font-size: 14px; }
+
+    /* ── Loading spinner ── */
+    .loading-items {
+      text-align: center; padding: 32px;
+      color: #94a3b8; font-size: 14px;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1a2233; color: #fff;
+      padding: 12px 24px; border-radius: 30px; font-size: 14px;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+      z-index: 999; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ── Phase visibility ── */
+    .phase { display: none; }
+    .phase.active { display: block; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">📦 Material & Equipment Check</div>
+  <a class="back-btn" href="/fvo/dashboard.html">← Dashboard</a>
+</nav>
+
+<div class="main">
+
+  <!-- ═══════════════════════════════════════════════
+       PHASE 1 — SELECT CONTRACT + FILL FORM
+  ════════════════════════════════════════════════════ -->
+  <div class="phase active" id="phase-form">
+
+    <!-- GPS bar -->
+    <div class="gps-bar loading" id="gpsBar">📡 Getting GPS location…</div>
+
+    <!-- Select contract -->
+    <div class="card">
+      <div class="card-title">📋 Select Contract</div>
+      <div class="form-group">
+        <label>Contract <span class="req">*</span></label>
+        <select id="contractSelect" onchange="loadContractItems()">
+          <option value="">— Select a contract —</option>
+        </select>
+      </div>
+
+      <!-- Contract info banner -->
+      <div class="contract-banner" id="contractBanner">
+        <div class="cn" id="bannerName">—</div>
+        <div class="cd" id="bannerDetail">—</div>
+      </div>
+    </div>
+
+    <!-- Items form — shown once contract selected -->
+    <div id="itemsSection" style="display:none;">
+
+      <!-- Discrepancy live summary bar -->
+      <div class="disc-bar ok" id="discBar" style="display:flex;">
+        <span id="discBarText">✅ All quantities match</span>
+        <span id="discBarCount" style="font-size:12px;"></span>
+      </div>
+
+      <!-- Items card -->
+      <div class="card" id="itemsCard">
+        <div class="card-title">📊 Verify Quantities on Site</div>
+        <div class="item-header">
+          <span>Item</span>
+          <span>Unit</span>
+          <span>Contracted</span>
+          <span>Observed</span>
+          <span></span>
+        </div>
+        <div id="itemsBody">
+          <div class="loading-items">Loading items…</div>
+        </div>
+      </div>
+
+      <!-- Remarks + submit -->
+      <div class="card">
+        <div class="card-title">📝 Remarks</div>
+        <div class="form-group">
+          <textarea id="remarksInput"
+            placeholder="Note any observations, missing items, site conditions…"></textarea>
+        </div>
+        <button class="btn btn-purple btn-full" id="reviewBtn" onclick="goToReview()">
+          → Review & Submit
+        </button>
+      </div>
+
+    </div>
+
+    <!-- History -->
+    <p class="section-title">Past Material Checks</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Contract</th><th>Project</th>
+            <th>Result</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="5" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PHASE 2 — REVIEW BEFORE SUBMIT
+  ════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-review">
+    <div class="card">
+      <div class="card-title">✅ Review Before Submitting</div>
+
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="lbl">Contract</div>
+          <div class="val" id="reviewContract">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Date</div>
+          <div class="val" id="reviewDate">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Total Items</div>
+          <div class="val" id="reviewTotal">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Discrepancies</div>
+          <div class="val red" id="reviewDisc">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">Overall Result</div>
+          <div class="val" id="reviewResult">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="lbl">GPS Location</div>
+          <div class="val" id="reviewGPS" style="font-size:12px;">—</div>
+        </div>
+      </div>
+
+      <!-- Discrepancy list -->
+      <p class="section-title">Discrepancies Found</p>
+      <div class="disc-list" id="discList"></div>
+
+      <!-- Remarks preview -->
+      <div class="form-group" id="remarksPreviewWrap" style="display:none;">
+        <label>Remarks</label>
+        <div id="remarksPreview"
+          style="padding:10px 13px; background:#f8fafc; border-radius:8px; font-size:13px; color:#475569;">
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn" style="background:#f1f5f9;color:#475569;"
+          onclick="showPhase('form')">← Edit</button>
+        <button class="btn btn-purple" id="submitBtn" onclick="submitCheck()">
+          ✅ Confirm & Submit
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Auth ──────────────────────────────────────────────────
+  const token = localStorage.getItem('fvo_token');
+  if (!token) window.location.href = '/login.html';
+  const AUTH        = { 'Authorization': 'Bearer ' + token };
+  const JSON_HEADS  = { 'Content-Type': 'application/json', ...AUTH };
+
+  // ── State ─────────────────────────────────────────────────
+  let currentGPS      = null;
+  let currentContract = null;   // { contract_id, project_name, ... }
+  let allItems        = [];     // flat array of all items loaded
+  let filledItems     = [];     // array built at review time
+
+  // ══════════════════════════════════════════════════════════
+  //  GPS
+  // ══════════════════════════════════════════════════════════
+  function initGPS() {
+    const bar = document.getElementById('gpsBar');
+    if (!navigator.geolocation) {
+      bar.className = 'gps-bar error';
+      bar.textContent = '❌ GPS not supported on this browser.';
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        bar.className = 'gps-bar ready';
+        bar.textContent =
+          `✅ GPS — ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)} (±${Math.round(pos.coords.accuracy)}m)`;
+      },
+      err => {
+        bar.className = 'gps-bar error';
+        bar.textContent = err.code === 1
+          ? '❌ Location denied. Allow location and reload.'
+          : '❌ GPS unavailable.';
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  LOAD CONTRACTS DROPDOWN
+  // ══════════════════════════════════════════════════════════
+  async function loadContracts() {
+    try {
+      const res  = await fetch('/api/material/contracts', { headers: AUTH });
+      const data = await res.json();
+      const sel  = document.getElementById('contractSelect');
+
+      data.contracts.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value       = c.contract_id;
+        opt.textContent = `${c.contract_id} — ${c.project_name}`;
+        sel.appendChild(opt);
+      });
+    } catch (e) {
+      showToast('Could not load contracts. Is the server running?');
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  LOAD ITEMS FOR SELECTED CONTRACT
+  // ══════════════════════════════════════════════════════════
+  async function loadContractItems() {
+    const contractId = document.getElementById('contractSelect').value;
+    if (!contractId) {
+      document.getElementById('contractBanner').classList.remove('show');
+      document.getElementById('itemsSection').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('itemsBody').innerHTML =
+      '<div class="loading-items">⏳ Loading items…</div>';
+    document.getElementById('itemsSection').style.display = 'block';
+
+    try {
+      const res  = await fetch(`/api/material/items/${contractId}`, { headers: AUTH });
+      const data = await res.json();
+
+      if (!res.ok) { showToast(data.error || 'Failed to load items.'); return; }
+
+      currentContract = data.contract;
+      allItems        = [];
+
+      // Show contract banner
+      document.getElementById('bannerName').textContent =
+        `${data.contract.contract_id} — ${data.contract.project_name}`;
+      document.getElementById('bannerDetail').textContent =
+        `${data.contract.location} | Contractor: ${data.contract.contractor}`;
+      document.getElementById('contractBanner').classList.add('show');
+
+      // Render grouped items
+      const body   = document.getElementById('itemsBody');
+      body.innerHTML = '';
+
+      for (const [category, items] of Object.entries(data.groups)) {
+        const catDiv = document.createElement('div');
+        catDiv.className = 'category-block';
+
+        const catLabel = document.createElement('div');
+        catLabel.className   = 'category-label';
+        catLabel.textContent = category;
+        catDiv.appendChild(catLabel);
+
+        items.forEach(item => {
+          allItems.push({ ...item, category });
+
+          const row = document.createElement('div');
+          row.className = 'item-row';
+          row.innerHTML = `
+            <div>
+              <div class="item-name">${item.item_name}</div>
+            </div>
+            <div style="text-align:center;">
+              <span style="font-size:12px;color:#64748b;">${item.unit}</span>
+            </div>
+            <div class="qty-contracted">${item.qty_contracted}</div>
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              class="qty-input"
+              id="qty_${item.id}"
+              placeholder="—"
+              oninput="onQtyChange(${item.id}, ${item.qty_contracted})"
+            />
+            <div class="flag-icon" id="flag_${item.id}">—</div>
+          `;
+          catDiv.appendChild(row);
+        });
+
+        body.appendChild(catDiv);
+      }
+
+      resetDiscBar();
+
+    } catch (e) {
+      showToast('Server error loading items.');
+      console.error(e);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  LIVE DISCREPANCY DETECTION
+  // ══════════════════════════════════════════════════════════
+  function onQtyChange(itemId, contracted) {
+    const input   = document.getElementById(`qty_${itemId}`);
+    const flagEl  = document.getElementById(`flag_${itemId}`);
+    const observed = parseFloat(input.value);
+
+    if (isNaN(observed) || input.value === '') {
+      input.className = 'qty-input';
+      flagEl.textContent = '—';
+    } else if (observed < contracted) {
+      input.className    = 'qty-input discrepancy';
+      flagEl.textContent = '🚩';
+    } else {
+      input.className    = 'qty-input ok';
+      flagEl.textContent = '✅';
+    }
+
+    updateDiscBar();
+  }
+
+  function updateDiscBar() {
+    let discCount = 0;
+    allItems.forEach(item => {
+      const input    = document.getElementById(`qty_${item.id}`);
+      const observed = parseFloat(input?.value);
+      if (!isNaN(observed) && observed < item.qty_contracted) discCount++;
+    });
+
+    const bar = document.getElementById('discBar');
+    const txt = document.getElementById('discBarText');
+    const cnt = document.getElementById('discBarCount');
+
+    if (discCount === 0) {
+      bar.className  = 'disc-bar ok';
+      txt.textContent = '✅ All filled quantities match';
+      cnt.textContent = '';
+    } else {
+      bar.className  = 'disc-bar warn';
+      txt.textContent = `⚠️ ${discCount} discrepanc${discCount > 1 ? 'ies' : 'y'} detected`;
+      cnt.textContent = 'Will be flagged on submit';
+    }
+  }
+
+  function resetDiscBar() {
+    const bar = document.getElementById('discBar');
+    bar.className = 'disc-bar ok';
+    document.getElementById('discBarText').textContent = '✅ All quantities match';
+    document.getElementById('discBarCount').textContent = '';
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  GO TO REVIEW
+  // ══════════════════════════════════════════════════════════
+  function goToReview() {
+    const contractId = document.getElementById('contractSelect').value;
+    if (!contractId) return showToast('Please select a contract.');
+
+    // Collect filled items
+    filledItems = [];
+    let filledCount = 0;
+
+    allItems.forEach(item => {
+      const input    = document.getElementById(`qty_${item.id}`);
+      const observed = parseFloat(input?.value);
+      const filled   = !isNaN(observed) && input.value !== '';
+
+      filledItems.push({
+        item_id:        item.id,
+        item_name:      item.item_name,
+        category:       item.category,
+        unit:           item.unit,
+        qty_contracted: item.qty_contracted,
+        qty_observed:   filled ? observed : null,
+        discrepancy:    filled && observed < item.qty_contracted
+      });
+      if (filled) filledCount++;
+    });
+
+    if (filledCount === 0) {
+      return showToast('Please enter at least one observed quantity.');
+    }
+
+    const discrepancies = filledItems.filter(i => i.discrepancy);
+
+    // Fill review summary
+    document.getElementById('reviewContract').textContent =
+      `${currentContract.contract_id}`;
+    document.getElementById('reviewDate').textContent =
+      new Date().toLocaleDateString('en-IN');
+    document.getElementById('reviewTotal').textContent    = filledCount + ' items filled';
+    document.getElementById('reviewDisc').textContent     = discrepancies.length;
+    document.getElementById('reviewResult').textContent   =
+      discrepancies.length > 0 ? '⚠️ Discrepancy' : '✅ All Match';
+    document.getElementById('reviewResult').className =
+      'val ' + (discrepancies.length > 0 ? 'red' : 'green');
+    document.getElementById('reviewGPS').textContent =
+      currentGPS ? `${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}` : 'Not available';
+
+    // Discrepancy list
+    const discList = document.getElementById('discList');
+    if (discrepancies.length === 0) {
+      discList.innerHTML = '<div class="no-disc">✅ No discrepancies — all observed quantities match contract.</div>';
+    } else {
+      discList.innerHTML = discrepancies.map(d => `
+        <div class="disc-item">
+          <div>
+            <div class="di-name">${d.item_name}</div>
+            <div style="font-size:11px;color:#94a3b8;">${d.category} · ${d.unit}</div>
+          </div>
+          <div class="di-diff">
+            Expected ${d.qty_contracted} → Found ${d.qty_observed}
+            <span style="color:#94a3b8;font-weight:400;">
+              (−${(d.qty_contracted - d.qty_observed).toFixed(1)})
+            </span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Remarks preview
+    const remarks = document.getElementById('remarksInput').value.trim();
+    if (remarks) {
+      document.getElementById('remarksPreview').textContent = remarks;
+      document.getElementById('remarksPreviewWrap').style.display = 'block';
+    } else {
+      document.getElementById('remarksPreviewWrap').style.display = 'none';
+    }
+
+    showPhase('review');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  SUBMIT
+  // ══════════════════════════════════════════════════════════
+  async function submitCheck() {
+    const contractId = document.getElementById('contractSelect').value;
+    const remarks    = document.getElementById('remarksInput').value.trim();
+    const btn        = document.getElementById('submitBtn');
+
+    btn.disabled     = true;
+    btn.textContent  = 'Submitting…';
+
+    try {
+      const res  = await fetch('/api/material/submit', {
+        method:  'POST',
+        headers: JSON_HEADS,
+        body:    JSON.stringify({
+          contract_id: contractId,
+          items:       filledItems,
+          remarks,
+          gps_lat: currentGPS?.lat || null,
+          gps_lng: currentGPS?.lng || null
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok) { showToast(data.error || 'Submission failed.'); return; }
+
+      const label = data.overall_status === 'discrepancy'
+        ? '⚠️ Submitted with discrepancies flagged.'
+        : '✅ Submitted — all quantities matched.';
+      showToast(label);
+      setTimeout(() => window.location.href = '/fvo/dashboard.html', 2200);
+
+    } catch (e) {
+      showToast('Server error. Try again.');
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = '✅ Confirm & Submit';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  HISTORY TABLE
+  // ══════════════════════════════════════════════════════════
+  async function loadHistory() {
+    try {
+      const res  = await fetch('/api/material/history', { headers: AUTH });
+      const data = await res.json();
+      const tbody = document.getElementById('historyBody');
+
+      if (!data.records || data.records.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="5" class="empty-state">No material checks yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.records.map(r => `
+        <tr>
+          <td>${r.date}</td>
+          <td>${r.contract_id}</td>
+          <td>${r.project_name || '—'}</td>
+          <td><span class="badge ${r.overall_status}">${r.overall_status}</span></td>
+          <td><span class="badge ${r.status}">${r.status}</span></td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      console.error('History error:', e);
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+  function showPhase(name) {
+    document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
+    document.getElementById('phase-' + name).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  // ── Init ──────────────────────────────────────────────────
+  initGPS();
+  loadContracts();
+  loadHistory();
+</script>
+</body>
+</html>

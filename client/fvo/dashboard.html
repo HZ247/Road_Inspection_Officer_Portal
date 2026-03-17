@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FVO Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+    .navbar {
+      background: #1a4f8a; color: #fff;
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .navbar .brand span { opacity: 0.7; font-size: 13px; font-weight: 400; margin-left: 8px; }
+    .logout-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; cursor: pointer;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.25); }
+    .main { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+    .welcome {
+      background: #fff; border-radius: 12px;
+      padding: 24px 28px; margin-bottom: 28px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .welcome h2 { color: #1a4f8a; font-size: 20px; }
+    .welcome p  { color: #777; font-size: 13px; margin-top: 4px; }
+    .date-badge {
+      background: #e8f0fe; color: #1a4f8a;
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    }
+    .section-title {
+      font-size: 14px; font-weight: 700; color: #555;
+      margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .modules {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .module-card {
+      background: #fff; border-radius: 12px; padding: 24px 22px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      border-left: 4px solid transparent;
+      text-decoration: none; display: block; color: inherit;
+      transition: transform 0.15s, box-shadow 0.15s; cursor: pointer;
+    }
+    .module-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.10); }
+    .module-card.green  { border-left-color: #22c55e; }
+    .module-card.blue   { border-left-color: #3b82f6; }
+    .module-card.orange { border-left-color: #f97316; }
+    .card-icon { font-size: 32px; margin-bottom: 12px; }
+    .module-card h3 { font-size: 15px; color: #1a2233; margin-bottom: 6px; }
+    .module-card p  { font-size: 12px; color: #888; line-height: 1.5; }
+    .badge {
+      display: inline-block; margin-top: 10px;
+      font-size: 11px; padding: 2px 10px; border-radius: 10px; font-weight: 600;
+    }
+    .badge.ready       { background: #dcfce7; color: #16a34a; }
+    .badge.coming-soon { background: #f1f5f9; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="brand">🏗️ FVO Portal <span>Field Officer</span></div>
+    <div>
+      <span style="font-size:14px; margin-right:16px;" id="userName">Loading…</span>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="welcome">
+      <div>
+        <h2>Good <span id="timeGreet">day</span>, <span id="officerName">Officer</span> 👋</h2>
+        <p id="officerDetails">Field Verification Officer</p>
+      </div>
+      <div class="date-badge" id="todayDate">—</div>
+    </div>
+
+    <p class="section-title">Your Modules</p>
+    <div class="modules">
+
+      <a class="module-card green" href="/fvo/attendance.html">
+        <div class="card-icon">📍</div>
+        <h3>Site Attendance</h3>
+        <p>GPS-based check-in and check-out at your assigned site location.</p>
+        <span class="badge ready">✓ Live</span>
+      </a>
+
+      <a class="module-card blue" href="/fvo/inspection.html">
+        <div class="card-icon">🛣️</div>
+        <h3>Road Inspection</h3>
+        <p>Capture live photos with GPS trail during site inspection walks.</p>
+        <span class="badge ready">Live</span>
+      </a>
+
+      <a class="module-card orange" href="/fvo/material.html">
+        <div class="card-icon">📦</div>
+        <h3>Material Check</h3>
+        <p>Verify materials and equipment against contract quantities.</p>
+        <span class="badge ready">✓ Live</span>
+      </a>
+
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('fvo_token');
+    const role  = localStorage.getItem('fvo_role');
+    const name  = localStorage.getItem('fvo_name');
+    if (!token)                window.location.href = '/login.html';
+    else if (role === 'admin') window.location.href = '/admin/dashboard.html';
+
+    const hour = new Date().getHours();
+    document.getElementById('timeGreet').textContent =
+      hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    document.getElementById('userName').textContent    = name || 'Officer';
+    document.getElementById('officerName').textContent = name || 'Officer';
+    document.getElementById('officerDetails').textContent =
+      'Employee ID: ' + (localStorage.getItem('fvo_employee_id') || '—');
+    document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+  </script>
+</body>
+</html>

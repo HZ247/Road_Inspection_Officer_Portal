@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Officer Management</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+    .navbar {
+      background: #7c3aed; color: #fff; padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .back-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px; font-size: 13px;
+      cursor: pointer; text-decoration: none;
+    }
+    .main { max-width: 1080px; margin: 0 auto; padding: 32px 20px; }
+
+    .page-header {
+      background: #fff; border-radius: 12px;
+      padding: 20px 24px; margin-bottom: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .page-header h2 { color: #7c3aed; font-size: 18px; }
+    .page-header p  { color: #888; font-size: 13px; margin-top: 3px; }
+
+    /* Search */
+    .search-bar {
+      background: #fff; border-radius: 10px;
+      padding: 14px 18px; margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .search-bar input {
+      width: 100%; padding: 9px 13px;
+      border: 1.5px solid #dde2ea; border-radius: 8px;
+      font-size: 14px; outline: none;
+    }
+    .search-bar input:focus { border-color: #7c3aed; }
+
+    /* Officer cards */
+    .officer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .officer-card {
+      background: #fff; border-radius: 12px; padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      border-left: 4px solid #7c3aed;
+      transition: transform 0.15s;
+    }
+    .officer-card:hover { transform: translateY(-2px); }
+    .officer-top {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; margin-bottom: 14px;
+    }
+    .officer-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: #ede9fe; color: #7c3aed;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800; flex-shrink: 0;
+    }
+    .officer-info { flex: 1; margin-left: 12px; }
+    .officer-name { font-size: 15px; font-weight: 700; color: #1a2233; }
+    .officer-id   { font-size: 12px; color: #7c3aed; font-weight: 600; margin-top: 2px; }
+    .officer-role { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+
+    .officer-stats {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+      margin-bottom: 12px;
+    }
+    .ost {
+      background: #f8fafc; border-radius: 8px;
+      padding: 8px; text-align: center;
+    }
+    .ost .n { font-size: 18px; font-weight: 800; color: #1a2233; }
+    .ost .l { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+
+    .officer-meta { font-size: 12px; color: #94a3b8; }
+    .officer-meta span { margin-right: 12px; }
+
+    .empty-state {
+      text-align: center; padding: 48px;
+      color: #94a3b8; font-size: 14px;
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .loading { text-align: center; padding: 48px; color: #94a3b8; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">👥 Officer Management</div>
+  <a class="back-btn" href="/admin/dashboard.html">← Dashboard</a>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <div>
+      <h2>Registered Officers</h2>
+      <p id="officerCount">Loading…</p>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInput"
+      placeholder="🔍 Search by name, employee ID, department…"
+      oninput="filterOfficers()" />
+  </div>
+
+  <div id="officerGrid" class="officer-grid">
+    <div class="loading">Loading officers…</div>
+  </div>
+</div>
+
+<script>
+  const token = localStorage.getItem('fvo_token');
+  const role  = localStorage.getItem('fvo_role');
+  if (!token || role !== 'admin') window.location.href = '/login.html';
+
+  const AUTH = { 'Authorization': 'Bearer ' + token };
+  let allOfficers = [];
+
+  async function loadOfficers() {
+    try {
+      const res  = await fetch('/api/admin/officers', { headers: AUTH });
+      const data = await res.json();
+      allOfficers = data.officers || [];
+      document.getElementById('officerCount').textContent =
+        `${allOfficers.length} officer${allOfficers.length !== 1 ? 's' : ''} registered`;
+      renderOfficers(allOfficers);
+    } catch (e) {
+      document.getElementById('officerGrid').innerHTML =
+        '<div class="empty-state">Failed to load officers.</div>';
+    }
+  }
+
+  function renderOfficers(list) {
+    const grid = document.getElementById('officerGrid');
+    if (!list.length) {
+      grid.innerHTML = '<div class="empty-state">No officers found.</div>';
+      return;
+    }
+    grid.innerHTML = list.map(o => {
+      const initials = o.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      const lastSeen = o.last_attendance_date
+        ? `Last seen: ${o.last_attendance_date}` : 'Never checked in';
+      return `
+        <div class="officer-card">
+          <div class="officer-top">
+            <div class="officer-avatar">${initials}</div>
+            <div class="officer-info">
+              <div class="officer-name">${o.name}</div>
+              <div class="officer-id">${o.employee_id}</div>
+              <div class="officer-role">${o.designation || '—'} · ${o.department || '—'}</div>
+            </div>
+          </div>
+          <div class="officer-stats">
+            <div class="ost">
+              <div class="n">${o.total_attendance}</div>
+              <div class="l">Attendance</div>
+            </div>
+            <div class="ost">
+              <div class="n">${o.total_inspections}</div>
+              <div class="l">Inspections</div>
+            </div>
+            <div class="ost">
+              <div class="n">${o.total_material_checks}</div>
+              <div class="l">Mat. Checks</div>
+            </div>
+          </div>
+          <div class="officer-meta">
+            <span>📱 ${o.mobile || '—'}</span>
+            <span>📅 ${lastSeen}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function filterOfficers() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    renderOfficers(allOfficers.filter(o =>
+      o.name.toLowerCase().includes(q) ||
+      o.employee_id.toLowerCase().includes(q) ||
+      (o.department || '').toLowerCase().includes(q) ||
+      (o.designation || '').toLowerCase().includes(q)
+    ));
+  }
+
+  loadOfficers();
+</script>
+</body>
+</html>

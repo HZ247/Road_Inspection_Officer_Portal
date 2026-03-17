@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+
+    .navbar {
+      background: #7c3aed; color: #fff;
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .navbar .brand span { opacity: 0.7; font-size: 13px; font-weight: 400; margin-left: 8px; }
+    .logout-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; cursor: pointer;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+    .main { max-width: 1080px; margin: 0 auto; padding: 32px 20px; }
+
+    .welcome {
+      background: #fff; border-radius: 12px;
+      padding: 22px 28px; margin-bottom: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .welcome h2 { color: #7c3aed; font-size: 20px; }
+    .welcome p  { color: #777; font-size: 13px; margin-top: 4px; }
+    .date-badge {
+      background: #ede9fe; color: #7c3aed;
+      padding: 6px 14px; border-radius: 20px;
+      font-size: 13px; font-weight: 600;
+    }
+
+    .section-title {
+      font-size: 13px; font-weight: 700; color: #555;
+      margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* Stats grid */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px; margin-bottom: 28px;
+    }
+    .stat-card {
+      background: #fff; border-radius: 12px; padding: 18px 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      border-top: 3px solid transparent;
+    }
+    .stat-card.purple { border-top-color: #7c3aed; }
+    .stat-card.green  { border-top-color: #22c55e; }
+    .stat-card.blue   { border-top-color: #3b82f6; }
+    .stat-card.orange { border-top-color: #f97316; }
+    .stat-card.red    { border-top-color: #ef4444; }
+    .stat-card.teal   { border-top-color: #14b8a6; }
+    .stat-card .num {
+      font-size: 30px; font-weight: 800; color: #1a2233;
+    }
+    .stat-card .lbl {
+      font-size: 12px; color: #94a3b8; margin-top: 4px;
+    }
+    .stat-card .ico { font-size: 22px; margin-bottom: 8px; }
+
+    /* Module nav cards */
+    .modules {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .module-card {
+      background: #fff; border-radius: 12px; padding: 22px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      border-left: 4px solid #7c3aed;
+      text-decoration: none; display: block; color: inherit;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .module-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+    }
+    .module-card .card-icon { font-size: 28px; margin-bottom: 10px; }
+    .module-card h3 { font-size: 15px; color: #1a2233; margin-bottom: 5px; }
+    .module-card p  { font-size: 12px; color: #888; line-height: 1.5; }
+    .badge-count {
+      display: inline-block; margin-top: 10px;
+      background: #ede9fe; color: #7c3aed;
+      font-size: 11px; font-weight: 700;
+      padding: 2px 10px; border-radius: 20px;
+    }
+    .badge-count.red { background: #fee2e2; color: #dc2626; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">🏗️ FVO Portal <span>Admin Panel</span></div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span style="font-size:14px;" id="adminName">Admin</span>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="main">
+
+  <div class="welcome">
+    <div>
+      <h2>Admin Dashboard 🛡️</h2>
+      <p>Welcome back, <strong id="adminNameInner">—</strong></p>
+    </div>
+    <div class="date-badge" id="todayDate">—</div>
+  </div>
+
+  <p class="section-title">Live Overview</p>
+  <div class="stats">
+    <div class="stat-card purple">
+      <div class="ico">👥</div>
+      <div class="num" id="statOfficers">—</div>
+      <div class="lbl">Total Officers</div>
+    </div>
+    <div class="stat-card green">
+      <div class="ico">📍</div>
+      <div class="num" id="statActive">—</div>
+      <div class="lbl">Checked In Today</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="ico">🛣️</div>
+      <div class="num" id="statInspToday">—</div>
+      <div class="lbl">Inspections Today</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="ico">⏳</div>
+      <div class="num" id="statPendingInsp">—</div>
+      <div class="lbl">Pending Inspection Reviews</div>
+    </div>
+    <div class="stat-card teal">
+      <div class="ico">📦</div>
+      <div class="num" id="statPendingMat">—</div>
+      <div class="lbl">Pending Material Reviews</div>
+    </div>
+    <div class="stat-card red">
+      <div class="ico">🚩</div>
+      <div class="num" id="statFlagged">—</div>
+      <div class="lbl">Flagged Inspections</div>
+    </div>
+  </div>
+
+  <p class="section-title">Admin Modules</p>
+  <div class="modules">
+
+    <a class="module-card" href="/admin/officers.html">
+      <div class="card-icon">👥</div>
+      <h3>Officer Management</h3>
+      <p>View all registered FVO officers, their activity and last check-in date.</p>
+      <span class="badge-count" id="modOfficers">— officers</span>
+    </a>
+
+    <a class="module-card" href="/admin/inspections.html">
+      <div class="card-icon">🛣️</div>
+      <h3>Inspection Review</h3>
+      <p>Review submitted inspections. View GPS trail on map, photos, and approve or flag.</p>
+      <span class="badge-count" id="modPendingInsp">— pending</span>
+    </a>
+
+    <a class="module-card" href="/admin/materials.html">
+      <div class="card-icon">📦</div>
+      <h3>Material Check Review</h3>
+      <p>Review material & equipment checks. See discrepancies and take action.</p>
+      <span class="badge-count" id="modPendingMat">— pending</span>
+    </a>
+
+    <a class="module-card" href="/admin/attendance.html">
+      <div class="card-icon">📅</div>
+      <h3>Attendance Records</h3>
+      <p>View GPS check-in / check-out records for all officers across all dates.</p>
+      <span class="badge-count" id="modActive">— active today</span>
+    </a>
+
+  </div>
+</div>
+
+<script>
+  const token = localStorage.getItem('fvo_token');
+  const role  = localStorage.getItem('fvo_role');
+  if (!token)          window.location.href = '/login.html';
+  else if (role !== 'admin') window.location.href = '/fvo/dashboard.html';
+
+  const name = localStorage.getItem('fvo_name') || 'Admin';
+  document.getElementById('adminName').textContent      = name;
+  document.getElementById('adminNameInner').textContent = name;
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  async function loadStats() {
+    try {
+      const res  = await fetch('/api/admin/stats', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const d = await res.json();
+      if (!d.success) return;
+
+      document.getElementById('statOfficers').textContent    = d.total_officers;
+      document.getElementById('statActive').textContent      = d.active_today;
+      document.getElementById('statInspToday').textContent   = d.inspections_today;
+      document.getElementById('statPendingInsp').textContent = d.pending_inspections;
+      document.getElementById('statPendingMat').textContent  = d.pending_materials;
+      document.getElementById('statFlagged').textContent     = d.flagged_total;
+
+      document.getElementById('modOfficers').textContent    = d.total_officers + ' officers';
+      document.getElementById('modPendingInsp').textContent = d.pending_inspections + ' pending';
+      document.getElementById('modPendingMat').textContent  = d.pending_materials + ' pending';
+      document.getElementById('modActive').textContent      = d.active_today + ' active today';
+
+      if (d.pending_inspections > 0)
+        document.getElementById('modPendingInsp').classList.add('red');
+      if (d.pending_materials > 0)
+        document.getElementById('modPendingMat').classList.add('red');
+    } catch (e) {
+      console.error('Stats load failed', e);
+    }
+  }
+
+  function logout() { localStorage.clear(); window.location.href = '/login.html'; }
+
+  loadStats();
+</script>
+</body>
+</html>

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inspection Review</title>
+  <!-- Leaflet for GPS map -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; min-height: 100vh; }
+    .navbar {
+      background: #7c3aed; color: #fff; padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .navbar .brand { font-size: 16px; font-weight: 700; }
+    .back-btn {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 13px; text-decoration: none; cursor: pointer;
+    }
+    .main { max-width: 1080px; margin: 0 auto; padding: 28px 20px; }
+
+    /* Filters */
+    .filter-bar {
+      background: #fff; border-radius: 10px; padding: 14px 18px;
+      margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: 8px 13px; border: 1.5px solid #dde2ea;
+      border-radius: 8px; font-size: 13px; outline: none;
+      flex: 1; min-width: 150px;
+    }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: #7c3aed; }
+
+    /* Table */
+    .table-wrap {
+      background: #fff; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 24px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f8fafc; color: #64748b; font-size: 11px;
+      font-weight: 700; text-transform: uppercase;
+      padding: 12px 14px; text-align: left;
+    }
+    td { padding: 12px 14px; border-top: 1px solid #f1f5f9; color: #374151; }
+    tr:hover td { background: #fafafa; }
+    .badge {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge.active    { background: #fef9c3; color: #854d0e; }
+    .badge.submitted { background: #dbeafe; color: #1d4ed8; }
+    .badge.approved  { background: #dcfce7; color: #16a34a; }
+    .badge.flagged   { background: #fee2e2; color: #dc2626; }
+    .view-btn {
+      background: #ede9fe; color: #7c3aed;
+      border: none; padding: 5px 12px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .view-btn:hover { background: #ddd6fe; }
+    .empty-state { text-align: center; padding: 32px; color: #94a3b8; }
+
+    /* ── Detail panel (slides in) ── */
+    .detail-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 100; display: none;
+    }
+    .detail-overlay.open { display: block; }
+    .detail-panel {
+      position: fixed; top: 0; right: -680px; width: 660px;
+      height: 100%; background: #fff;
+      overflow-y: auto; z-index: 101;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+      transition: right 0.3s ease;
+      padding-bottom: 40px;
+    }
+    .detail-panel.open { right: 0; }
+
+    .detail-header {
+      background: #7c3aed; color: #fff;
+      padding: 18px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .detail-header h3 { font-size: 16px; }
+    .close-btn {
+      background: rgba(255,255,255,0.2); color: #fff;
+      border: none; padding: 6px 12px; border-radius: 6px;
+      font-size: 13px; cursor: pointer;
+    }
+
+    .detail-body { padding: 24px; }
+
+    /* Meta grid */
+    .meta-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 20px;
+    }
+    .meta-item .lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+    .meta-item .val { font-size: 14px; font-weight: 600; color: #1a2233; margin-top: 2px; }
+
+    /* Map */
+    .map-section-title {
+      font-size: 13px; font-weight: 700; color: #555;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    #inspMap {
+      height: 280px; border-radius: 10px;
+      border: 1px solid #e2e8f0; margin-bottom: 20px;
+    }
+    .map-legend {
+      display: flex; gap: 16px; font-size: 12px; color: #64748b;
+      margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .map-legend span { display: flex; align-items: center; gap: 5px; }
+
+    /* Photos */
+    .photo-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px; margin-bottom: 20px;
+    }
+    .photo-grid img {
+      width: 100%; aspect-ratio: 1; object-fit: cover;
+      border-radius: 8px; border: 2px solid #e2e8f0; cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .photo-grid img:hover { transform: scale(1.03); }
+    .no-photos { text-align: center; padding: 24px; color: #94a3b8; font-size: 13px; background: #f8fafc; border-radius: 10px; margin-bottom: 20px; }
+
+    /* Lightbox */
+    .lightbox {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      z-index: 200; display: none;
+      align-items: center; justify-content: center;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 90vw; max-height: 85vh; border-radius: 8px; }
+    .lightbox-close {
+      position: absolute; top: 20px; right: 20px;
+      background: rgba(255,255,255,0.2); color: #fff;
+      border: none; padding: 8px 14px; border-radius: 6px;
+      font-size: 14px; cursor: pointer;
+    }
+
+    /* Action section */
+    .action-section {
+      background: #f8fafc; border-radius: 10px;
+      padding: 18px; margin-bottom: 16px;
+    }
+    .action-section label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: #444; margin-bottom: 6px;
+    }
+    .action-section textarea {
+      width: 100%; padding: 9px 13px;
+      border: 1.5px solid #dde2ea; border-radius: 8px;
+      font-size: 13px; outline: none; resize: vertical;
+      min-height: 70px; font-family: inherit; margin-bottom: 12px;
+    }
+    .action-section textarea:focus { border-color: #7c3aed; }
+    .action-btns { display: flex; gap: 10px; }
+    .btn-approve {
+      flex: 1; padding: 11px; background: #22c55e; color: #fff;
+      border: none; border-radius: 8px; font-size: 14px;
+      font-weight: 700; cursor: pointer;
+    }
+    .btn-approve:hover { background: #16a34a; }
+    .btn-flag {
+      flex: 1; padding: 11px; background: #ef4444; color: #fff;
+      border: none; border-radius: 8px; font-size: 14px;
+      font-weight: 700; cursor: pointer;
+    }
+    .btn-flag:hover { background: #dc2626; }
+    .btn-approve:disabled, .btn-flag:disabled {
+      background: #e2e8f0; color: #94a3b8; cursor: not-allowed;
+    }
+
+    .already-reviewed {
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 8px; padding: 12px 16px;
+      font-size: 13px; color: #166534; font-weight: 600;
+    }
+    .already-reviewed.flagged {
+      background: #fef2f2; border-color: #fecaca; color: #dc2626;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1a2233; color: #fff; padding: 12px 24px;
+      border-radius: 30px; font-size: 14px; opacity: 0;
+      transition: opacity 0.3s; pointer-events: none; z-index: 300;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">🛣️ Inspection Review</div>
+  <a class="back-btn" href="/admin/dashboard.html">← Dashboard</a>
+</nav>
+
+<div class="main">
+
+  <div class="filter-bar">
+    <input type="text" id="searchInput" placeholder="🔍 Search officer, site, road…"
+      oninput="filterTable()" />
+    <select id="statusFilter" onchange="filterTable()">
+      <option value="">All Statuses</option>
+      <option value="submitted">Pending Review</option>
+      <option value="approved">Approved</option>
+      <option value="flagged">Flagged</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Officer</th>
+          <th>Site</th>
+          <th>Road</th>
+          <th>Photos</th>
+          <th>Coverage</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="inspTable">
+        <tr><td colspan="8" class="empty-state">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Detail panel -->
+<div class="detail-overlay" id="overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-header">
+    <h3 id="detailTitle">Inspection Detail</h3>
+    <button class="close-btn" onclick="closeDetail()">✕ Close</button>
+  </div>
+  <div class="detail-body">
+
+    <div class="meta-grid" id="metaGrid"></div>
+
+    <p class="map-section-title">📍 GPS Trail Map</p>
+    <div id="inspMap"></div>
+    <div class="map-legend">
+      <span><span style="color:#22c55e;">●</span> Start point</span>
+      <span><span style="color:#ef4444;">●</span> End point</span>
+      <span><span style="color:#3b82f6;">—</span> GPS trail</span>
+      <span><span style="color:#f97316;">📸</span> Photo location</span>
+    </div>
+
+    <p class="map-section-title">📸 Captured Photos</p>
+    <div id="photoGrid"></div>
+
+    <p class="map-section-title">📝 Officer Remarks</p>
+    <div id="officerRemarks"
+      style="background:#f8fafc;border-radius:8px;padding:12px 14px;font-size:13px;color:#475569;margin-bottom:20px;">
+    </div>
+
+    <div id="actionArea"></div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕ Close</button>
+  <img id="lightboxImg" src="" alt="photo"/>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const token = localStorage.getItem('fvo_token');
+  const role  = localStorage.getItem('fvo_role');
+  if (!token || role !== 'admin') window.location.href = '/login.html';
+
+  const AUTH       = { 'Authorization': 'Bearer ' + token };
+  const JSON_HEADS = { 'Content-Type': 'application/json', ...AUTH };
+
+  let allRecords = [];
+  let inspMap    = null;
+
+  // ── Load all inspections ───────────────────────────────────
+  async function loadInspections() {
+    try {
+      const res  = await fetch('/api/inspection/all', { headers: AUTH });
+      const data = await res.json();
+      allRecords = data.records || [];
+      renderTable(allRecords);
+    } catch (e) {
+      document.getElementById('inspTable').innerHTML =
+        '<tr><td colspan="8" class="empty-state">Failed to load inspections.</td></tr>';
+    }
+  }
+
+  function renderTable(list) {
+    const tbody = document.getElementById('inspTable');
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No inspections found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(r => `
+      <tr>
+        <td>${r.date || '—'}</td>
+        <td><strong>${r.name}</strong><br>
+          <span style="font-size:11px;color:#94a3b8;">${r.employee_id}</span></td>
+        <td>${r.site_name}</td>
+        <td>${r.road_name}</td>
+        <td>${r.photo_count}</td>
+        <td>${r.coverage_percent}%</td>
+        <td><span class="badge ${r.status}">${r.status}</span></td>
+        <td><button class="view-btn" onclick="openDetail(${r.id})">View →</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function filterTable() {
+    const q      = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    renderTable(allRecords.filter(r =>
+      (!status || r.status === status) &&
+      (!q ||
+        r.name.toLowerCase().includes(q) ||
+        r.site_name.toLowerCase().includes(q) ||
+        r.road_name.toLowerCase().includes(q) ||
+        r.employee_id.toLowerCase().includes(q)
+      )
+    ));
+  }
+
+  // ── Open detail panel ──────────────────────────────────────
+  async function openDetail(id) {
+    document.getElementById('metaGrid').innerHTML  = '<p style="color:#94a3b8">Loading…</p>';
+    document.getElementById('photoGrid').innerHTML = '';
+    document.getElementById('actionArea').innerHTML = '';
+    document.getElementById('officerRemarks').textContent = '';
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('detailPanel').classList.add('open');
+
+    // Destroy previous map instance
+    if (inspMap) { inspMap.remove(); inspMap = null; }
+
+    try {
+      const res  = await fetch(`/api/inspection/${id}`, { headers: AUTH });
+      const data = await res.json();
+      if (!data.success) { showToast('Could not load inspection.'); return; }
+
+      const insp = data.inspection;
+      document.getElementById('detailTitle').textContent =
+        `${insp.site_name} — ${insp.date || ''}`;
+
+      // Meta grid
+      document.getElementById('metaGrid').innerHTML = `
+        <div class="meta-item">
+          <div class="lbl">Officer</div>
+          <div class="val">${insp.employee_id}</div>
+        </div>
+        <div class="meta-item">
+          <div class="lbl">Contract</div>
+          <div class="val">${insp.contract_id || '—'}</div>
+        </div>
+        <div class="meta-item">
+          <div class="lbl">Start Time</div>
+          <div class="val">${insp.start_time || '—'}</div>
+        </div>
+        <div class="meta-item">
+          <div class="lbl">End Time</div>
+          <div class="val">${insp.end_time || '—'}</div>
+        </div>
+        <div class="meta-item">
+          <div class="lbl">Photos</div>
+          <div class="val">${insp.photo_count}</div>
+        </div>
+        <div class="meta-item">
+          <div class="lbl">Coverage</div>
+          <div class="val">${insp.coverage_percent}%</div>
+        </div>
+      `;
+
+      // Build map
+      const trail = insp.gps_trail || [];
+      const photos = insp.photos   || [];
+      const hasStartGPS = insp.start_lat && insp.start_lng;
+
+      const centerLat = hasStartGPS ? insp.start_lat : 21.1702;
+      const centerLng = hasStartGPS ? insp.start_lng : 72.8311;
+
+      inspMap = L.map('inspMap').setView([centerLat, centerLng], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(inspMap);
+
+      // Start marker
+      if (hasStartGPS) {
+        L.circleMarker([insp.start_lat, insp.start_lng], {
+          radius: 10, fillColor: '#22c55e', color: '#fff',
+          fillOpacity: 1, weight: 2
+        }).addTo(inspMap).bindPopup('🟢 Start point');
+      }
+
+      // GPS trail polyline
+      if (trail.length > 1) {
+        const latlngs = trail.map(p => [p.lat, p.lng]);
+        L.polyline(latlngs, { color: '#3b82f6', weight: 3, opacity: 0.8 }).addTo(inspMap);
+
+        // End marker
+        const last = trail[trail.length - 1];
+        L.circleMarker([last.lat, last.lng], {
+          radius: 10, fillColor: '#ef4444', color: '#fff',
+          fillOpacity: 1, weight: 2
+        }).addTo(inspMap).bindPopup('🔴 End point');
+
+        // Fit map to trail
+        inspMap.fitBounds(latlngs, { padding: [30, 30] });
+      } else if (trail.length === 1) {
+        L.circleMarker([trail[0].lat, trail[0].lng], {
+          radius: 8, fillColor: '#3b82f6', color: '#fff',
+          fillOpacity: 1, weight: 2
+        }).addTo(inspMap).bindPopup('Trail point 1');
+      }
+
+      // Photo markers
+      photos.forEach((p, idx) => {
+        if (p.lat && p.lng) {
+          const icon = L.divIcon({
+            html: `<div style="background:#f97316;color:#fff;font-size:11px;font-weight:700;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3)">${idx+1}</div>`,
+            className: '', iconSize: [24, 24]
+          });
+          L.marker([p.lat, p.lng], { icon })
+            .addTo(inspMap)
+            .bindPopup(`📸 Photo ${idx + 1}<br><small>${p.captured_at || ''}</small>`);
+        }
+      });
+
+      // Photos grid
+      const photoGrid = document.getElementById('photoGrid');
+      if (photos.length === 0) {
+        photoGrid.innerHTML = '<div class="no-photos">No photos captured in this inspection.</div>';
+      } else {
+        photoGrid.innerHTML = `<div class="photo-grid">${
+          photos.map((p, i) => `
+            <img src="/uploads/${p.filename}" alt="Photo ${i+1}"
+              onclick="openLightbox('/uploads/${p.filename}')"
+              title="Photo ${i+1} — ${p.captured_at || ''}" />
+          `).join('')
+        }</div>`;
+      }
+
+      // Remarks
+      document.getElementById('officerRemarks').textContent =
+        insp.remarks || 'No remarks provided.';
+
+      // Action area
+      const actionArea = document.getElementById('actionArea');
+      if (insp.status === 'approved') {
+        actionArea.innerHTML = `<div class="already-reviewed">✅ Approved</div>`;
+      } else if (insp.status === 'flagged') {
+        const msg = insp.admin_remarks ? ` — "${insp.admin_remarks}"` : '';
+        actionArea.innerHTML =
+          `<div class="already-reviewed flagged">🚩 Flagged for re-inspection${msg}</div>`;
+      } else {
+        actionArea.innerHTML = `
+          <div class="action-section">
+            <label>Admin Remarks (optional)</label>
+            <textarea id="adminRemarkInput" placeholder="Add remarks before approving or flagging…"></textarea>
+            <div class="action-btns">
+              <button class="btn-approve" onclick="reviewInspection(${id}, 'approve')">
+                ✅ Approve
+              </button>
+              <button class="btn-flag" onclick="reviewInspection(${id}, 'flag')">
+                🚩 Flag for Re-Inspection
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+    } catch (e) {
+      console.error(e);
+      showToast('Error loading inspection detail.');
+    }
+  }
+
+  async function reviewInspection(id, action) {
+    const remarks = document.getElementById('adminRemarkInput')?.value || '';
+    try {
+      const res  = await fetch(`/api/inspection/${id}/review`, {
+        method: 'PATCH',
+        headers: JSON_HEADS,
+        body: JSON.stringify({ action, admin_remarks: remarks })
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Action failed.'); return; }
+      showToast(action === 'approve' ? '✅ Inspection approved!' : '🚩 Flagged for re-inspection.');
+      closeDetail();
+      loadInspections();
+    } catch (e) {
+      showToast('Server error.');
+    }
+  }
+
+  function closeDetail() {
+    document.getElementById('overlay').classList.remove('open');
+    document.getElementById('detailPanel').classList.remove('open');
+    if (inspMap) { inspMap.remove(); inspMap = null; }
+  }
+
+  function openLightbox(src) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  loadInspections();
+</script>
+</body>
+</html>
