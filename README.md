@@ -31,8 +31,7 @@ Built with **Python + Flask + SQLite + plain HTML/JS**. No build tools, no frame
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/fvo-app.git
-cd fvo-app
+git clone https://github.com/HZ247/Road_Inspection_Officer_Portal.git
 ```
 
 ### 2. Create and activate virtual environment
