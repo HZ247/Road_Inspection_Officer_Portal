@@ -74,7 +74,7 @@ On first run the database is created automatically and seeded with:
 | Role | Employee ID | Password |
 |---|---|---|
 | Admin | `ADMIN001` | `admin123` |
-| Officer | Register at `/register.html` | Your choice |
+| Officer | FVO123 | OFFICER123 |
 
 ---
 
